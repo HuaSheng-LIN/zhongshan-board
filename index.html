@@ -381,6 +381,12 @@ html.tv #notes{resize:none;border-color:transparent}
   <label>勤務表（火警任務編組表）Google 試算表網址</label><input id="sDutyUrl">
   <label>即時同步網址（Google Apps Script，讓電視與值班台同步）</label><input id="sSync" placeholder="https://script.google.com/macros/s/……/exec">
   <label>同步寫入密碼（只有值班台需要填；電視不用填）</label><input id="sKey" type="password" autocomplete="off">
+  <label>電視畫面（會透過即時同步套用到電視，約 15 秒內生效）</label>
+  <div class="row2">
+    <div><label style="margin-top:0">縮放比例（0＝自動；例：0.9＝90%）</label><input id="sTvScale" type="number" step="0.05" min="0" max="3"></div>
+    <div><label style="margin-top:0">&nbsp;</label><label style="display:flex;gap:8px;align-items:center;color:var(--text);margin:8px 0 0"><input id="sTvDebug" type="checkbox" style="width:auto">在電視上顯示診斷資訊</label></div>
+  </div>
+  <div class="menu" style="margin-top:8px"><button type="button" onclick="S.tvReload=Date.now();save();alert('已送出，電視約 15 秒內會重新整理')">🔄 讓電視重新整理</button></div>
   <label>自動同步間隔（分鐘）</label><input id="sMin" type="number" min="5" max="1440">
   <label>車輛（一行一輛，格式：車種,車號,備註,顯示哪個勤務的人員）　例：救護車,91,BUQ,緊急救護</label><textarea id="sCars" style="min-height:200px"></textarea>
   <label>隊員名冊（一行一位；讀取輪休表時會自動更新為當月人員）</label><textarea id="sRoster" style="min-height:120px"></textarea>
@@ -455,6 +461,9 @@ const defaults={
   schedFile:'',
   liveUrl:LIVE_URL,  // 即時同步（Apps Script）網址
   sharedAt:0,        // 共用資料最後修改時間
+  tvScale:0,         // 電視縮放比例（0＝自動）
+  tvDebug:false,     // 電視顯示診斷資訊
+  tvReload:0,        // 遠端要求電視重新整理的時間
   syncAt:0,
   leaderOv:{},
   tab:'task',
@@ -495,7 +504,7 @@ function save(){
 
 // ===== 即時同步（值班台 ⇄ 電視）=====
 // 這些資料會在各台裝置間同步；Google 試算表的資料各裝置自己讀，不在此列
-const SHARED=['unit','vehicles','logs','notes','task','table','leaderOv','headcount','taskTpl','taskNote','taskMemo','duties','slots','roster'];
+const SHARED=['tvScale','tvDebug','tvReload','unit','vehicles','logs','notes','task','table','leaderOv','headcount','taskTpl','taskNote','taskMemo','duties','slots','roster'];
 let lastShared='',applyingRemote=false,livePulled=false,pushTimer=null,liveState='',liveAt=0;
 function sharedJson(){const o={};SHARED.forEach(k=>o[k]=S[k]);return JSON.stringify(o);}
 function liveShow(st,msg){
@@ -526,10 +535,12 @@ async function livePull(){
       S.sharedAt=r.at;save();applyingRemote=false;
       unitEl.textContent=S.unit;if(document.activeElement!==notesEl)notesEl.value=S.notes;
       renderCars();renderLogs();renderStats();renderDuty();renderNow();renderLeader();renderHead();
+      if(window.tvFit)tvFit();
     }else if(!TV&&r&&(!r.data||r.at<(S.sharedAt||0))){  // 雲端是空的或比較舊 → 上傳本機
       if(!S.sharedAt)S.sharedAt=Date.now();livePulled=true;livePushSoon();
     }
     livePulled=true;liveAt=Date.now();liveShow('ok');
+    if(window.tvReloadCheck)tvReloadCheck();
   }catch(e){liveShow('err',e.message);}
 }
 function livePushSoon(){if(TV||!S.liveUrl||!livePulled)return;clearTimeout(pushTimer);pushTimer=setTimeout(livePush,1500);}
@@ -1165,6 +1176,7 @@ function openSettings(){
   document.getElementById('sUrl').value=S.sheetUrl||'';
   document.getElementById('sDutyUrl').value=S.dutyUrl||'';
   document.getElementById('sSync').value=S.liveUrl||'';
+  document.getElementById('sTvScale').value=S.tvScale||0;document.getElementById('sTvDebug').checked=!!S.tvDebug;
   document.getElementById('sKey').value=localStorage.getItem(KEY+'.key')||'';
   document.getElementById('sMin').value=S.syncMin;
   dSet.showModal();
@@ -1178,6 +1190,7 @@ function saveSettings(){
   const nu=document.getElementById('sUrl').value.trim(),du=document.getElementById('sDutyUrl').value.trim(),urlChanged=nu!==S.sheetUrl||du!==S.dutyUrl;S.sheetUrl=nu;S.dutyUrl=du;
   const lu=document.getElementById('sSync').value.trim();if(lu!==S.liveUrl){S.liveUrl=lu;livePulled=false;setTimeout(livePull,200);}
   localStorage.setItem(KEY+'.key',document.getElementById('sKey').value.trim());
+  S.tvScale=Math.max(0,parseFloat(document.getElementById('sTvScale').value)||0);S.tvDebug=document.getElementById('sTvDebug').checked;
   S.syncMin=Math.max(5,+document.getElementById('sMin').value||30);
   if(urlChanged)setTimeout(()=>syncOnline(true),100);
   const tpl=document.getElementById('sTpl').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
@@ -1225,14 +1238,16 @@ if(TV){
     const vv=window.visualViewport;
     const w=Math.min(innerWidth,document.documentElement.clientWidth||innerWidth,vv?vv.width:innerWidth);
     const h=Math.min(innerHeight,document.documentElement.clientHeight||innerHeight,vv?vv.height:innerHeight);
-    const k=manual>0?manual:Math.min(w/1920,h/1080);
+    const k=manual>0?manual:S.tvScale>0?S.tvScale:Math.min(w/1920,h/1080);
     const b=document.body.style;b.transform=`scale(${k})`;
     // 置中（左右或上下有多餘空間時）
     b.marginLeft=Math.max(0,(w-1920*k)/2)+'px';b.marginTop=Math.max(0,(h-1080*k)/2)+'px';
-    if(qs.has('debug')){let d=document.getElementById('dbg');if(!d){d=document.createElement('div');d.id='dbg';
+    const dbgOn=qs.has('debug')||S.tvDebug,old=document.getElementById('dbg');if(!dbgOn&&old)old.remove();
+    if(dbgOn){let d=document.getElementById('dbg');if(!d){d=document.createElement('div');d.id='dbg';
       d.style.cssText='position:fixed;left:0;top:0;z-index:99;background:#ff0;color:#000;font:24px monospace;padding:8px;white-space:pre';document.documentElement.appendChild(d);}
       d.textContent=`innerWidth×innerHeight = ${innerWidth}×${innerHeight}\nclient = ${document.documentElement.clientWidth}×${document.documentElement.clientHeight}\nvisualViewport = ${vv?Math.round(vv.width)+'×'+Math.round(vv.height):'無'}\nscreen = ${screen.width}×${screen.height}  DPR = ${devicePixelRatio}\nscale = ${k.toFixed(3)}\n${navigator.userAgent}`;}
   };
+  window.tvFit=fit;let seenReload=null;window.tvReloadCheck=()=>{if(seenReload===null)seenReload=S.tvReload;else if(S.tvReload!==seenReload)location.reload();};
   fit();addEventListener('resize',fit);if(window.visualViewport)visualViewport.addEventListener('resize',fit);
   setInterval(fit,5000);   // 有些電視瀏覽器載入後才改變大小
   notesEl.readOnly=true;
