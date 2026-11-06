@@ -206,7 +206,7 @@ table.duty.sheet td{padding:3px 4px}
 .car .crew .ck{display:table;font-size:11px;font-weight:400;color:var(--blue);background:#4ea8de22;border-radius:4px;padding:0 5px;margin-bottom:2px}
 /* 電視模式：固定 1920×1080 設計尺寸，依螢幕等比例縮放；只顯示、不能操作 */
 html.tv,html.tv body{overflow:hidden}
-html.tv body{width:1920px;height:1080px;transform-origin:0 0}
+html.tv body{width:1920px;height:1080px;transform-origin:0 0;box-sizing:border-box;margin:0}
 html.tv .hbtns,html.tv .acts,html.tv #hintDuty,html.tv #hintTask a,html.tv .panel h2 .hint{display:none!important}
 html.tv main,html.tv .leader,html.tv #sync{pointer-events:none}
 html.tv .del{display:none}
@@ -1219,8 +1219,22 @@ lastShared=sharedJson();
 renderAll();setInterval(tick,1000);syncShow(S.syncAt?'ok':'');syncOnline(false);
 livePull();setInterval(livePull,TV?15000:60000);
 if(TV){
-  const fit=()=>{const k=Math.min(innerWidth/1920,innerHeight/1080);document.body.style.transform=`scale(${k})`;};
-  fit();addEventListener('resize',fit);
+  // 縮放：依實際可視範圍等比例縮放 1920×1080 的畫面；網址可加 &scale=0.9 手動指定
+  const qs=new URLSearchParams(location.search),manual=parseFloat(qs.get('scale'));
+  const fit=()=>{
+    const vv=window.visualViewport;
+    const w=Math.min(innerWidth,document.documentElement.clientWidth||innerWidth,vv?vv.width:innerWidth);
+    const h=Math.min(innerHeight,document.documentElement.clientHeight||innerHeight,vv?vv.height:innerHeight);
+    const k=manual>0?manual:Math.min(w/1920,h/1080);
+    const b=document.body.style;b.transform=`scale(${k})`;
+    // 置中（左右或上下有多餘空間時）
+    b.marginLeft=Math.max(0,(w-1920*k)/2)+'px';b.marginTop=Math.max(0,(h-1080*k)/2)+'px';
+    if(qs.has('debug')){let d=document.getElementById('dbg');if(!d){d=document.createElement('div');d.id='dbg';
+      d.style.cssText='position:fixed;left:0;top:0;z-index:99;background:#ff0;color:#000;font:24px monospace;padding:8px;white-space:pre';document.documentElement.appendChild(d);}
+      d.textContent=`innerWidth×innerHeight = ${innerWidth}×${innerHeight}\nclient = ${document.documentElement.clientWidth}×${document.documentElement.clientHeight}\nvisualViewport = ${vv?Math.round(vv.width)+'×'+Math.round(vv.height):'無'}\nscreen = ${screen.width}×${screen.height}  DPR = ${devicePixelRatio}\nscale = ${k.toFixed(3)}\n${navigator.userAgent}`;}
+  };
+  fit();addEventListener('resize',fit);if(window.visualViewport)visualViewport.addEventListener('resize',fit);
+  setInterval(fit,5000);   // 有些電視瀏覽器載入後才改變大小
   notesEl.readOnly=true;
   // 每 20 秒輪流顯示「火警任務編組」與「勤務分配表」
   setInterval(()=>{S.tab=S.tab==='duty'?'task':'duty';showTab();},20000);
