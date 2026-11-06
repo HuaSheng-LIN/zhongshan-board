@@ -53,7 +53,7 @@ main{flex:1;display:grid;grid-template-columns:1.45fr 1.15fr .85fr;gap:12px;min-
 .nd .n{font-size:12px;color:var(--muted)}
 .nd.main{border-left:5px solid var(--red)}
 
-/* 勤務分配表 */
+/* 當日勤務表 */
 table.duty{width:100%;border-collapse:collapse;font-size:15px;table-layout:fixed}
 table.duty th,table.duty td{border:1px solid var(--line);padding:5px 6px;text-align:center;word-break:break-all}
 table.duty th{background:var(--panel2);position:sticky;top:0;z-index:1;font-weight:600}
@@ -210,6 +210,17 @@ html.tv body{width:1920px;height:1080px;transform-origin:0 0;box-sizing:border-b
 html.tv .hbtns,html.tv .acts,html.tv #hintDuty,html.tv #hintTask a,html.tv .panel h2 .hint{display:none!important}
 html.tv main,html.tv .leader,html.tv #sync{pointer-events:none}
 html.tv .del{display:none}
+html.tv main{grid-template-columns:1.32fr 1.12fr .8fr}
+html.tv #pTab .tr{grid-template-columns:36% 1fr}
+html.tv #pTab .tr .p{font-size:18px;white-space:nowrap}
+html.tv #pTab .tnote{font-size:14px;line-height:1.45}
+html.tv .cars{grid-template-columns:repeat(3,1fr)}
+html.tv #unit{pointer-events:none;user-select:none}
+html.tv *{user-select:none;caret-color:transparent}
+html.tv #pDuty table.duty td.nm{font-size:17px;white-space:nowrap}
+html.tv #pDuty table.duty td.t{font-size:15px;width:70px}
+html.tv #pDuty table.duty th:first-child{width:70px!important}
+html.tv #pDuty table.duty th{font-size:15px;padding:5px 2px}
 html.tv #notes{resize:none;border-color:transparent}
 #live{font-size:12px;color:var(--muted);margin-top:4px;text-align:right;white-space:nowrap}
 #live.ok{color:var(--green)} #live.err{color:#ff6b6e}
@@ -242,12 +253,12 @@ html.tv #notes{resize:none;border-color:transparent}
 
 <main>
   <div class="col">
-    <section class="panel">
+    <section id="pNow" class="panel">
       <h2><span class="bar"></span>目前勤務</h2>
       <div class="now" id="now"></div>
     </section>
-    <section class="panel grow">
-      <h2><span class="tabs"><button id="tabTask" onclick="setTab('task')">🔥 火警任務編組</button><button id="tabDuty" onclick="setTab('duty')">勤務分配表</button></span>
+    <section id="pTab" class="panel grow">
+      <h2><span class="tabs"><button id="tabTask" onclick="setTab('task')">🔥 火警任務編組</button><button id="tabDuty" onclick="setTab('duty')">當日勤務表</button></span>
         <span id="viewDay" class="hint"></span>
         <span class="acts">
           <button class="act" onclick="shiftView(-1)">◀ 前一天</button>
@@ -263,11 +274,11 @@ html.tv #notes{resize:none;border-color:transparent}
   </div>
 
   <div class="col">
-    <section class="panel">
+    <section id="pCars" class="panel">
       <h2><span class="bar"></span>車輛動態 <span class="hint">（點車輛切換狀態）</span></h2>
       <div id="cars"></div>
     </section>
-    <section class="panel grow">
+    <section id="pLogs" class="panel grow">
       <h2><span class="bar"></span>今日出勤紀錄
         <span class="acts"><button class="act pri" onclick="openCase()">＋ 新增出勤</button></span></h2>
       <div class="scroll grow">
@@ -278,7 +289,7 @@ html.tv #notes{resize:none;border-color:transparent}
   </div>
 
   <div class="col">
-    <section class="panel">
+    <section id="pHead" class="panel">
       <h2><span class="bar"></span>今日上班人員 <span id="sync" onclick="syncOnline(true)" title="點擊立即同步">—</span></h2>
       <div class="headcount">
         <div class="num" id="head">—</div>
@@ -287,11 +298,11 @@ html.tv #notes{resize:none;border-color:transparent}
       <div class="nightduty" id="nightduty"></div>
       <div class="onlist" id="onlist"></div>
     </section>
-    <section class="panel">
+    <section id="pStats" class="panel">
       <h2><span class="bar"></span>本日出勤統計</h2>
       <div class="stats" id="stats"></div>
     </section>
-    <section class="panel grow">
+    <section id="pNotes" class="panel grow">
       <h2><span class="bar"></span>交接 / 重要事項</h2>
       <div id="dutyMemo" style="display:none"></div>
       <textarea id="notes" placeholder="例：&#10;・14:00 防火宣導（○○國小）&#10;・救護車 91 氧氣瓶待補&#10;・明日 09:00 大隊督導"></textarea>
@@ -393,7 +404,7 @@ html.tv #notes{resize:none;border-color:transparent}
   <label>火警任務編組格式（一行一組，格式：組名：職務、職務…；括號內是小字說明）</label><textarea id="sTpl" style="min-height:120px"></textarea>
   <label>火警任務編組 注意事項</label><textarea id="sTnote" style="min-height:80px"></textarea>
   <label>火警任務編組 備註</label><textarea id="sTmemo" style="min-height:80px"></textarea>
-  <label>勤務項目（勤務分配表欄位，用逗號分隔）</label><input id="sDuties">
+  <label>勤務項目（當日勤務表欄位，用逗號分隔；有 Google 勤務表時以試算表為準）</label><input id="sDuties">
   <div class="row2">
     <div style="grid-column:1/-1"><label>勤務時段切點（每個時段的開始時間，第一個是勤務日開始時間，用逗號分隔）</label>
       <input id="sSlots" placeholder="8,10,12,14,16,18,20,22,6"></div>
@@ -672,7 +683,7 @@ function renderNow(){
   document.getElementById('now').innerHTML=h;
 }
 
-// ===== 勤務分配表 =====
+// ===== 當日勤務表 =====
 function shiftView(n){viewOff=n===0?0:viewOff+n;renderDuty();}
 function renderDuty(){
   renderTask();
@@ -686,8 +697,8 @@ function renderDuty(){
     const ci=isToday?curSlot(sc,new Date()):-1;
     let h='<tr><th style="width:96px">時段</th>'+cols.map(c=>`<th>${esc(c)}</th>`).join('')+'</tr>';
     sc.slots.forEach((x,i)=>{
-      h+=`<tr class="${i===ci?'cur':(ci>=0&&i<ci?'past':'')}"><td class="t">${x.label}</td>`+
-        cols.map(c=>`<td class="nm">${(x.cells[c]||[]).map(n=>esc(n)).join('<br>')}</td>`).join('')+'</tr>';
+      h+=`<tr class="${i===ci?'cur':(ci>=0&&i<ci?'past':'')}"><td class="t">${TV?x.label.replace(/:00/g,''):x.label}</td>`+
+        cols.map(c=>`<td class="nm">${(x.cells[c]||[]).map(n=>esc(TV?stripNo(n):n)).join('<br>')}</td>`).join('')+'</tr>';
     });
     const el=document.getElementById('duty');el.className='duty sheet';el.innerHTML=h;
     if(isToday)el.querySelector('tr.cur')?.scrollIntoView({block:'center'});
@@ -1253,8 +1264,28 @@ if(TV){
   fit();addEventListener('resize',fit);if(window.visualViewport)visualViewport.addEventListener('resize',fit);
   setInterval(fit,5000);   // 有些電視瀏覽器載入後才改變大小
   notesEl.readOnly=true;
-  // 每 20 秒輪流顯示「火警任務編組」與「勤務分配表」
-  setInterval(()=>{S.tab=S.tab==='duty'?'task':'duty';showTab();},20000);
+  // 電視版面：左＝目前勤務＋火警任務編組；中＝當日勤務表；右＝車輛動態＋今日上班人員
+  (()=>{
+    const $=id=>document.getElementById(id),cols=document.querySelectorAll('main > .col');
+    const pDuty=document.createElement('section');pDuty.id='pDuty';pDuty.className='panel grow';
+    pDuty.innerHTML='<h2><span class="bar"></span>當日勤務表 <span class="hint" id="tvDay"></span></h2>';
+    pDuty.appendChild($('wrapDuty'));
+    cols[2].insertBefore($('pCars'),cols[2].firstChild);
+    // 電視不需要的區塊：移到隱藏區（保留元素，程式照常運作）
+    const hid=document.createElement('div');hid.style.display='none';document.body.appendChild(hid);
+    ['pLogs','pStats','pNotes'].forEach(id=>{const e=$(id);if(e)hid.appendChild(e);});
+    cols[1].appendChild(pDuty);
+    $('pHead').classList.add('grow');
+    const tabs=$('pTab').querySelector('.tabs');tabs.outerHTML='<span class="bar"></span>🔥 火警任務編組';
+    $('wrapTask').style.display='';$('hintTask').style.display='none';$('wrapDuty').style.display='';
+  })();
+  window.showTab=()=>{};
+  // 唯讀：關閉所有可編輯的地方，攔下鍵盤輸入
+  document.querySelectorAll('[contenteditable]').forEach(e=>e.setAttribute('contenteditable','false'));
+  document.querySelectorAll('input,textarea,select,button').forEach(e=>{e.disabled=true;e.tabIndex=-1;});
+  addEventListener('keydown',e=>{if(!/^(F5|F11)$/.test(e.key))e.preventDefault();},true);
+  addEventListener('paste',e=>e.preventDefault(),true);
+  addEventListener('dblclick',e=>e.preventDefault(),true);
   // 盡量讓螢幕保持開啟
   const wl=()=>{try{navigator.wakeLock&&navigator.wakeLock.request('screen').catch(()=>{});}catch(e){}};
   wl();document.addEventListener('visibilitychange',()=>{if(!document.hidden)wl();});
