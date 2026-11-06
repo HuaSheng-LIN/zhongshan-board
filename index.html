@@ -19,7 +19,7 @@ button{font-family:inherit;cursor:pointer}
 header{display:flex;align-items:center;gap:20px;background:linear-gradient(90deg,#7a0d12,#131c2e 60%);
   border:1px solid var(--line);border-radius:12px;padding:10px 20px}
 .logo{font-size:40px}
-#unit{font-size:32px;font-weight:700;outline:none;min-width:200px}
+#unit{font-size:42px;font-weight:700;outline:none;min-width:200px}
 #unit:focus{background:#0006;border-radius:6px}
 .clock{margin-left:auto;text-align:right}
 #time{font-size:52px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:2px;line-height:1}
@@ -46,10 +46,10 @@ main{flex:1;display:grid;grid-template-columns:1.45fr 1.15fr .85fr;gap:12px;min-
 /* 目前勤務 */
 .now{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .nowslot{grid-column:1/-1;font-size:15px;color:var(--muted)}
-.nowslot b{color:var(--amber);font-size:22px}
+.nowslot b{color:var(--amber);font-size:27px}
 .nd{background:var(--panel2);border-radius:8px;padding:6px 10px}
-.nd .k{font-size:14px;color:var(--muted)}
-.nd .v{font-size:22px;font-weight:700;min-height:30px}
+.nd .k{font-size:16px;color:var(--muted)}
+.nd .v{font-size:27px;font-weight:700;min-height:34px;line-height:1.25}
 .nd .n{font-size:12px;color:var(--muted)}
 .nd.main{border-left:5px solid var(--red)}
 
@@ -63,9 +63,9 @@ table.duty td.ed:hover{background:#4ea8de33;outline:1px solid var(--blue)}
 .leader{display:flex;flex-direction:column;align-items:flex-end;margin-left:auto;margin-right:24px;cursor:pointer;
   background:#0005;border:1px solid var(--line);border-radius:10px;padding:6px 16px;min-width:220px}
 .leader:hover{border-color:var(--amber)}
-.leader .k{font-size:14px;color:#cfd8ea}
-.leader .m{font-size:32px;font-weight:700;color:var(--amber);line-height:1.15}
-.leader .s{font-size:16px;color:#cfd8ea}
+.leader .k{font-size:16px;color:#cfd8ea}
+.leader .m{font-size:42px;font-weight:700;color:var(--amber);line-height:1.15}
+.leader .s{font-size:19px;color:#cfd8ea}
 .leader .s b{color:var(--text)}
 .leader .w{font-size:14px;color:#ffd166;margin-top:2px}
 #sync{margin-left:auto;font-size:13px;font-weight:400;cursor:pointer;padding:2px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel2)}
@@ -87,7 +87,9 @@ table.duty td.ed:hover{background:#4ea8de33;outline:1px solid var(--blue)}
 .pick button.on{background:var(--blue);border-color:var(--blue);color:#000;font-weight:700}
 .pick button .o{font-size:12px;margin-left:4px}
 #pkResult{font-size:20px;font-weight:700;min-height:28px;color:var(--amber)}
-table.duty tr.cur td{background:#e5383b33;font-weight:700}
+table.duty tr.cur td{background:#e5383b40;font-weight:700;border-top:3px solid #ff4d4f;border-bottom:3px solid #ff4d4f}
+table.duty tr.cur td:first-child{border-left:3px solid #ff4d4f}
+table.duty tr.cur td:last-child{border-right:3px solid #ff4d4f}
 table.duty tr.cur td.t{color:#fff}
 table.duty tr.past td{opacity:.45}
 .dayflag{white-space:nowrap;font-size:14px;padding:1px 8px;border-radius:10px;background:var(--amber);color:#000;font-weight:600}
@@ -96,12 +98,12 @@ table.duty tr.past td{opacity:.45}
 /* 車輛 */
 .vgroup{display:grid;grid-template-columns:70px 1fr;gap:8px;align-items:stretch;margin-bottom:8px}
 .vgroup:last-child{margin-bottom:0}
-.vlabel{display:flex;align-items:center;justify-content:center;background:var(--panel2);border-radius:8px;font-weight:700;font-size:15px;text-align:center}
+.vlabel{display:flex;align-items:center;justify-content:center;background:var(--panel2);border-radius:8px;font-weight:700;font-size:17px;text-align:center}
 .cars{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .car{border-radius:8px;padding:6px 10px;background:var(--panel2);border-left:7px solid var(--green);cursor:pointer;user-select:none}
-.car .n{font-size:22px;font-weight:700;line-height:1.2}
+.car .n{font-size:28px;font-weight:700;line-height:1.2}
 .car .n small{font-size:13px;color:var(--muted);font-weight:400;margin-left:6px}
-.car .s{font-size:16px;font-weight:600}
+.car .s{font-size:20px;font-weight:600}
 .car .d{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .car.st-在隊{border-color:var(--green)} .car.st-在隊 .s{color:var(--green)}
 .car.st-出勤中{border-color:var(--red);animation:blink 1.2s infinite} .car.st-出勤中 .s{color:#ff6b6e}
@@ -202,7 +204,7 @@ table.duty.sheet td{padding:3px 4px}
 .tnote.left{text-align:left}
 #dutyMemo{background:#f4a26118;border:1px solid #f4a26166;border-radius:8px;padding:8px 12px;font-size:15px;line-height:1.6;white-space:pre-line;margin-bottom:8px;max-height:45%;overflow:auto}
 #dutyMemo b{color:var(--amber)}
-.car .crew{margin-top:4px;padding-top:4px;border-top:1px dashed var(--line);font-size:17px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.car .crew{margin-top:4px;padding-top:4px;border-top:1px dashed var(--line);font-size:19px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .car .crew .ck{display:table;font-size:11px;font-weight:400;color:var(--blue);background:#4ea8de22;border-radius:4px;padding:0 5px;margin-bottom:2px}
 /* 電視模式：固定 1920×1080 設計尺寸，依螢幕等比例縮放；只顯示、不能操作 */
 html.tv,html.tv body{overflow:hidden}
@@ -210,20 +212,33 @@ html.tv body{width:1920px;height:1080px;transform-origin:0 0;box-sizing:border-b
 html.tv .hbtns,html.tv .acts,html.tv #hintDuty,html.tv #hintTask a,html.tv .panel h2 .hint{display:none!important}
 html.tv main,html.tv .leader,html.tv #sync{pointer-events:none}
 html.tv .del{display:none}
-html.tv main{grid-template-columns:1.32fr 1.12fr .8fr}
+html.tv main{grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:auto minmax(0,1fr)}
+html.tv main>.col{display:contents}
+html.tv #pNow{grid-column:1/6;grid-row:1}
+html.tv #pCars{grid-column:6/10;grid-row:1}
+html.tv #pHead{grid-column:10/13;grid-row:1}
+html.tv #pTab{grid-column:1/7;grid-row:2;min-height:0}
+html.tv #pDuty{grid-column:7/13;grid-row:2;min-height:0}
+html.tv #pTab .tnote{display:none}
+html.tv #pDuty .scroll{overflow:hidden}
+html.tv .nd .v{font-size:30px}
+html.tv .now{grid-template-columns:repeat(3,1fr)}
+html.tv .car .n{font-size:30px}
+html.tv .car .s{font-size:21px}
 html.tv #pTab .tr{grid-template-columns:36% 1fr}
 html.tv #pTab .tr .p{font-size:18px;white-space:nowrap}
 html.tv #pTab .tnote{font-size:14px;line-height:1.45}
 html.tv .cars{grid-template-columns:repeat(3,1fr)}
 html.tv #unit{pointer-events:none;user-select:none}
 html.tv *{user-select:none;caret-color:transparent}
-html.tv #pDuty table.duty td.nm{font-size:17px;white-space:nowrap}
-html.tv #pDuty table.duty td.t{font-size:15px;width:70px}
-html.tv #pDuty table.duty th:first-child{width:70px!important}
-html.tv #pDuty table.duty th{font-size:15px;padding:5px 2px}
+html.tv #pDuty table.duty td.nm{font-size:19px;white-space:nowrap;line-height:1.3}
+html.tv #pDuty table.duty td.t{font-size:17px;width:80px}
+html.tv #pDuty table.duty th:first-child{width:80px!important}
+html.tv #pDuty table.duty th{font-size:17px;padding:6px 2px}
 html.tv #notes{resize:none;border-color:transparent}
 #live{font-size:12px;color:var(--muted);margin-top:4px;text-align:right;white-space:nowrap}
 #live.ok{color:var(--green)} #live.err{color:#ff6b6e}
+.nw{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -643,6 +658,11 @@ function parseSched(wb, XLSX){
 function curSlot(sc,d){const m=d.getHours()*60+d.getMinutes();
   const i=sc.slots.findIndex(x=>x.s<x.e?(m>=x.s&&m<x.e):(m>=x.s||m<x.e));return i<0?0:i;}
 const stripNo=n=>String(n).replace(/^\d+\s*/,'');
+// 名字前補上兩位數番號（已有番號的維持原樣，例：「21 林華聖」）
+function fmtNo(k,tok){tok=String(tok).trim();if(!tok)return tok;
+  const m=tok.match(/^(\d+)\s*(.+)$/);if(m)return pad(+m[1])+' '+m[2];
+  const no=noOf(k,tok);return no!=null?pad(no)+' '+tok:tok;}
+function withNo(k,text){return String(text||'').replace(/[^\/、,，;；\s]+/g,t=>fmtNo(k,t));}
 // 某人在某時段的勤務
 function dutyOfName(slot,name){if(!slot)return '';const nm=stripNo(name);
   for(const [c,list] of Object.entries(slot.cells))if(list.some(x=>stripNo(x)===nm))return c;return '';}
@@ -669,16 +689,17 @@ function renderNow(){
     sc.cols.forEach(c=>{
       const v=cur.cells[c]||[],n=nx.cells[c]||[];
       if(!v.length&&!MAIN.includes(c))return;
-      h+=`<div class="nd ${c==='值班'?'main':''} ${v.length?'':'dim'}"><div class="k">${esc(c)}</div><div class="v">${v.length?v.map(x=>esc(stripNo(x))).join('、'):'<span class="hint">—</span>'}</div>
-        <div class="n">下一時段 → ${n.length?n.map(x=>esc(stripNo(x))).join('、'):'—'}</div></div>`;
+      h+=`<div class="nd ${c==='值班'?'main':''} ${v.length?'':'dim'}"><div class="k">${esc(c)}</div><div class="v">${v.length?v.map(x=>`<span class="nw">${esc(fmtNo(dutyKey(d),x))}</span>`).join('、'):'<span class="hint">—</span>'}</div>
+        <div class="n">下一時段 → ${n.length?n.map(x=>`<span class="nw">${esc(fmtNo(dutyKey(d),x))}</span>`).join('、'):'—'}</div></div>`;
     });
     document.getElementById('now').innerHTML=h;return;
   }
   const t=tableOf(dutyKey(new Date())),i=slotIndex(new Date()),row=t[i]||[],next=t[(i+1)%slotCount()]||[];
   let h=`<div class="nowslot">目前時段 <b>${slotLabel(i)}</b>　下一時段 ${slotLabel((i+1)%slotCount())}</div>`;
   S.duties.forEach((n,c)=>{
-    h+=`<div class="nd ${c===0?'main':''}"><div class="k">${esc(n)}</div><div class="v">${esc(row[c])||'<span class="hint">—</span>'}</div>
-      <div class="n">下一班 → ${esc(next[c])||'—'}</div></div>`;
+    const dk=dutyKey(new Date());
+    h+=`<div class="nd ${c===0?'main':''}"><div class="k">${esc(n)}</div><div class="v">${esc(withNo(dk,row[c]))||'<span class="hint">—</span>'}</div>
+      <div class="n">下一班 → ${esc(withNo(dk,next[c]))||'—'}</div></div>`;
   });
   document.getElementById('now').innerHTML=h;
 }
@@ -696,9 +717,11 @@ function renderDuty(){
     const cols=sc.cols.filter(c=>sc.slots.some(x=>(x.cells[c]||[]).length));
     const ci=isToday?curSlot(sc,new Date()):-1;
     let h='<tr><th style="width:96px">時段</th>'+cols.map(c=>`<th>${esc(c)}</th>`).join('')+'</tr>';
+    const lo=TV&&ci>=0?Math.max(0,ci-1):0,hi=TV&&ci>=0?Math.min(sc.slots.length,lo+4):sc.slots.length;
     sc.slots.forEach((x,i)=>{
+      if(i<lo||i>=hi)return;
       h+=`<tr class="${i===ci?'cur':(ci>=0&&i<ci?'past':'')}"><td class="t">${TV?x.label.replace(/:00/g,''):x.label}</td>`+
-        cols.map(c=>`<td class="nm">${(x.cells[c]||[]).map(n=>esc(TV?stripNo(n):n)).join('<br>')}</td>`).join('')+'</tr>';
+        cols.map(c=>`<td class="nm">${(x.cells[c]||[]).map(n=>esc(fmtNo(k,n))).join('<br>')}</td>`).join('')+'</tr>';
     });
     const el=document.getElementById('duty');el.className='duty sheet';el.innerHTML=h;
     if(isToday)el.querySelector('tr.cur')?.scrollIntoView({block:'center'});
@@ -710,7 +733,7 @@ function renderDuty(){
     const row=t[i]||[];
     const cls=isToday?(i===cur?'cur':i<cur?'past':''):'';
     h+=`<tr class="${cls}"><td class="t">${slotLabel(i)}</td>`+
-      S.duties.map((_,c)=>`<td class="ed" data-r="${i}" data-c="${c}" title="點一下選擇人員">${esc(row[c])}</td>`).join('')+'</tr>';
+      S.duties.map((_,c)=>`<td class="ed" data-r="${i}" data-c="${c}" title="點一下選擇人員">${esc(withNo(k,row[c]))}</td>`).join('')+'</tr>';
   }
   if(!t.some(r=>r&&r.some(Boolean)))h+=`<tr><td colspan="${S.duties.length+1}" class="empty">點格子即可選擇該時段的勤務人員</td></tr>`;
   const el=document.getElementById('duty');el.innerHTML=h;
@@ -860,9 +883,10 @@ function pkSave(){
 const NIGHT_FROM=18; // 18:00 後換夜間帶隊官
 function ldName(p,list){
   if(!p)return '—';
-  if(p.t==='分隊長')return '分隊長';
-  if(/隊長/.test(p.t)){const same=list.filter(x=>x.t===p.t&&x.name[0]===p.name[0]).length>1;return (same?p.name:p.name[0])+p.t;}
-  return p.name;
+  const pre=p.no!=null?pad(p.no)+' ':'';
+  if(p.t==='分隊長')return pre+'分隊長';
+  if(/隊長/.test(p.t)){const same=list.filter(x=>x.t===p.t&&x.name[0]===p.name[0]).length>1;return pre+(same?p.name:p.name[0])+p.t;}
+  return pre+p.name;
 }
 function leadersOf(k){
   const r=S.rot[k];if(!r)return null;
@@ -1101,13 +1125,13 @@ function renderHead(){
   }
   document.getElementById('head').innerHTML=r.n+'<small>人</small>';
   document.getElementById('headDay').innerHTML=`白天 <b style="color:var(--text);font-size:22px">${r.d}</b> 人`;
-  const nm=no=>`${no} ${esc(r.names[no]||'')}`;
+  const nm=no=>`${pad(no)} ${esc(r.names[no]||'')}`;
   document.getElementById('nightduty').innerHTML=
     (r.night.length?`值宿：<b>${r.night.map(nm).join('、')}</b>　`:'')+(r.big.length?`大夜：<b>${r.big.map(nm).join('、')}</b>`:'');
   const ld=leadersOf(k)||{};
   document.getElementById('onlist').innerHTML=[...r.on].sort((a,b)=>a.no-b.no).map(p=>{
     const isL=p===ld.day||p===ld.night;
-    return `<span class="${p.out?'out':p.tag?'tg':''} ${isL?'ld':''}" title="${p.no} 番 ${esc(p.t)}">${esc(p.name)}${p.out?`<i>${p.tag?esc(p.tag)+'·':''}外宿</i>`:p.tag?`<i>${esc(p.tag)}</i>`:''}${p.t==='役男'?'<i>役</i>':''}</span>`;}).join('');
+    return `<span class="${p.out?'out':p.tag?'tg':''} ${isL?'ld':''}" title="${p.no} 番 ${esc(p.t)}">${pad(p.no)} ${esc(p.name)}${p.out?`<i>${p.tag?esc(p.tag)+'·':''}外宿</i>`:p.tag?`<i>${esc(p.tag)}</i>`:''}${p.t==='役男'?'<i>役</i>':''}</span>`;}).join('');
 }
 
 // ===== 車輛 =====
@@ -1125,7 +1149,7 @@ function crewHtml(v){
   if(!v.crew)return '';
   const d=new Date(),sc=S.sched[dutyKey(d)];
   if(!sc||!sc.slots.length)return `<div class="crew"><span class="ck">${esc(v.crew)}</span>—</div>`;
-  const list=(sc.slots[curSlot(sc,d)].cells[v.crew]||[]).map(stripNo);
+  const list=(sc.slots[curSlot(sc,d)].cells[v.crew]||[]).map(x=>fmtNo(dutyKey(d),x));
   return `<div class="crew"><span class="ck">${esc(v.crew)}</span>${list.length?list.map(esc).join('、'):'—'}</div>`;
 }
 let carIdx=0;
@@ -1264,18 +1288,16 @@ if(TV){
   fit();addEventListener('resize',fit);if(window.visualViewport)visualViewport.addEventListener('resize',fit);
   setInterval(fit,5000);   // 有些電視瀏覽器載入後才改變大小
   notesEl.readOnly=true;
-  // 電視版面：左＝目前勤務＋火警任務編組；中＝當日勤務表；右＝車輛動態＋今日上班人員
+  // 電視版面：第二列＝目前勤務｜車輛動態｜今日上班人員；第三列＝火警任務編組｜當日勤務表
   (()=>{
-    const $=id=>document.getElementById(id),cols=document.querySelectorAll('main > .col');
-    const pDuty=document.createElement('section');pDuty.id='pDuty';pDuty.className='panel grow';
+    const $=id=>document.getElementById(id);
+    const pDuty=document.createElement('section');pDuty.id='pDuty';pDuty.className='panel';
     pDuty.innerHTML='<h2><span class="bar"></span>當日勤務表 <span class="hint" id="tvDay"></span></h2>';
     pDuty.appendChild($('wrapDuty'));
-    cols[2].insertBefore($('pCars'),cols[2].firstChild);
+    document.querySelector('main').appendChild(pDuty);
     // 電視不需要的區塊：移到隱藏區（保留元素，程式照常運作）
     const hid=document.createElement('div');hid.style.display='none';document.body.appendChild(hid);
     ['pLogs','pStats','pNotes'].forEach(id=>{const e=$(id);if(e)hid.appendChild(e);});
-    cols[1].appendChild(pDuty);
-    $('pHead').classList.add('grow');
     const tabs=$('pTab').querySelector('.tabs');tabs.outerHTML='<span class="bar"></span>🔥 火警任務編組';
     $('wrapTask').style.display='';$('hintTask').style.display='none';$('wrapDuty').style.display='';
   })();
