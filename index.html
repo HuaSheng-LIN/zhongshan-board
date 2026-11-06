@@ -482,6 +482,31 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 </script>
 <script>
 const KEY='zhongshanDutyBoard.v3';
+// ===== 標準時間（台北 UTC+8）=====
+// 向網站伺服器取得標準時間，並換算成台北時間；裝置時鐘或時區設錯也能正確顯示
+const _Date=Date;
+let CLOCK_OFF=0;   // 伺服器時間 − 本機時間（毫秒）
+function tzFix(){return (new _Date().getTimezoneOffset()+480)*60000;}  // 裝置時區不是 UTC+8 時的修正
+(function(){
+  class TaipeiDate extends _Date{
+    constructor(...a){a.length?super(...a):super(_Date.now()+CLOCK_OFF+tzFix());}
+    static now(){return _Date.now()+CLOCK_OFF+tzFix();}
+  }
+  window.Date=TaipeiDate;
+})();
+async function syncClock(){
+  if(!/^https?:/.test(location.protocol))return;   // 本機檔案無法取得伺服器時間
+  try{
+    const t0=_Date.now();
+    const r=await fetch(location.pathname+'?clock='+t0,{method:'HEAD',cache:'no-store'});
+    const t1=_Date.now(),hd=r.headers.get('Date'),srv=hd?_Date.parse(hd):NaN;
+    if(isNaN(srv))return;
+    // Date 標頭只到秒，補 0.5 秒；再補上一半的來回時間
+    CLOCK_OFF=srv+500+(t1-t0)/2-t1;
+    window.clockInfo=`伺服器時間校正：${(CLOCK_OFF/1000).toFixed(1)} 秒；時區修正：${tzFix()/3600000} 小時`;
+  }catch(e){}
+}
+syncClock();setInterval(syncClock,30*60000);
 const LIVE_URL='https://script.google.com/macros/s/AKfycby2hOW3QFGmh5cix-1jeBkwVl7UrBJ2LRNswfnQlyxLHS_ry-sDt7YQDftfukHwzWVv/exec';   // 即時同步（Apps Script）網址
 if(!window.structuredClone)window.structuredClone=o=>JSON.parse(JSON.stringify(o));
 const TV=/[?&]tv=1/.test(location.search);
@@ -1330,6 +1355,8 @@ function importData(inp){
   r.onload=()=>{try{S=Object.assign(structuredClone(defaults),JSON.parse(r.result));save();renderAll();dSet.close();alert('匯入完成');}
     catch(e){alert('檔案格式錯誤');}};r.readAsText(f);inp.value='';
 }
+// 重新整理並略過暫存，確保拿到最新版
+function hardReload(){const q=new URLSearchParams(location.search);q.set('v',_Date.now());location.replace(location.pathname+'?'+q.toString());}
 function toggleFull(){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}
 
 const unitEl=document.getElementById('unit');
@@ -1357,9 +1384,9 @@ if(TV){
     const dbgOn=qs.has('debug')||S.tvDebug,old=document.getElementById('dbg');if(!dbgOn&&old)old.remove();
     if(dbgOn){let d=document.getElementById('dbg');if(!d){d=document.createElement('div');d.id='dbg';
       d.style.cssText='position:fixed;left:0;top:0;z-index:99;background:#ff0;color:#000;font:24px monospace;padding:8px;white-space:pre';document.documentElement.appendChild(d);}
-      d.textContent=`innerWidth×innerHeight = ${innerWidth}×${innerHeight}\nclient = ${document.documentElement.clientWidth}×${document.documentElement.clientHeight}\nvisualViewport = ${vv?Math.round(vv.width)+'×'+Math.round(vv.height):'無'}\nscreen = ${screen.width}×${screen.height}  DPR = ${devicePixelRatio}\nscale = ${k.toFixed(3)}\n${navigator.userAgent}`;}
+      d.textContent=`innerWidth×innerHeight = ${innerWidth}×${innerHeight}\nclient = ${document.documentElement.clientWidth}×${document.documentElement.clientHeight}\nvisualViewport = ${vv?Math.round(vv.width)+'×'+Math.round(vv.height):'無'}\nscreen = ${screen.width}×${screen.height}  DPR = ${devicePixelRatio}\nscale = ${k.toFixed(3)}\n${window.clockInfo||'時間校正：尚未取得'}\n${navigator.userAgent}`;}
   };
-  window.tvFit=fit;let seenReload=null;window.tvReloadCheck=()=>{if(seenReload===null)seenReload=S.tvReload;else if(S.tvReload!==seenReload)location.reload();};
+  window.tvFit=fit;let seenReload=null;window.tvReloadCheck=()=>{if(seenReload===null)seenReload=S.tvReload;else if(S.tvReload!==seenReload)hardReload();};
   fit();addEventListener('resize',fit);if(window.visualViewport)visualViewport.addEventListener('resize',fit);
   setInterval(fit,5000);   // 有些電視瀏覽器載入後才改變大小
   notesEl.readOnly=true;
@@ -1387,7 +1414,7 @@ if(TV){
   const wl=()=>{try{navigator.wakeLock&&navigator.wakeLock.request('screen').catch(()=>{});}catch(e){}};
   wl();document.addEventListener('visibilitychange',()=>{if(!document.hidden)wl();});
   // 每天凌晨 4 點重新整理一次，避免長時間開著累積問題
-  setInterval(()=>{const d=new Date();if(d.getHours()===4&&d.getMinutes()===0&&d.getSeconds()<2)location.reload();},1000);
+  setInterval(()=>{const d=new Date();if(d.getHours()===4&&d.getMinutes()===0&&d.getSeconds()<2)hardReload();},1000);
 }
 </script>
 </body>
