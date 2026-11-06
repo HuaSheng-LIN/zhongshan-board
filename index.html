@@ -1189,7 +1189,9 @@ function saveSettings(){
   });
   const nu=document.getElementById('sUrl').value.trim(),du=document.getElementById('sDutyUrl').value.trim(),urlChanged=nu!==S.sheetUrl||du!==S.dutyUrl;S.sheetUrl=nu;S.dutyUrl=du;
   const lu=document.getElementById('sSync').value.trim();if(lu!==S.liveUrl){S.liveUrl=lu;livePulled=false;setTimeout(livePull,200);}
-  localStorage.setItem(KEY+'.key',document.getElementById('sKey').value.trim());
+  const nk=document.getElementById('sKey').value.trim(),keyChanged=nk!==(localStorage.getItem(KEY+'.key')||'');
+  localStorage.setItem(KEY+'.key',nk);
+  if(keyChanged&&nk){if(!S.sharedAt)S.sharedAt=Date.now();livePulled=true;setTimeout(livePush,300);}  // 密碼變更 → 立刻上傳一次
   S.tvScale=Math.max(0,parseFloat(document.getElementById('sTvScale').value)||0);S.tvDebug=document.getElementById('sTvDebug').checked;
   S.syncMin=Math.max(5,+document.getElementById('sMin').value||30);
   if(urlChanged)setTimeout(()=>syncOnline(true),100);
