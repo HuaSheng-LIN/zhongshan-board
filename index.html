@@ -326,6 +326,22 @@ table.dyn td,table.dyn th{border:1px solid var(--line);padding:5px 8px;text-alig
 table.dyn th{background:var(--panel2);width:140px}
 #dynMsg.ok{color:var(--green)} #dynMsg.err{color:#ff6b6b}
 html.tv #dynStat{display:none}
+/* 出勤中列表與返隊 */
+#active{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.actv{display:flex;align-items:center;gap:8px;background:#3a1a22;border:1px solid #e5383b88;border-radius:8px;padding:6px 10px;font-size:17px;animation:blink 1.6s infinite}
+.actv b{font-size:18px} .actv .tm{color:#ffb3b3;font-size:14px;font-variant-numeric:tabular-nums;margin-left:8px}
+.actv .rb{margin-left:auto;display:flex;gap:6px}
+.actv .rb button{font-family:inherit;font-size:15px;font-weight:700;padding:5px 12px;border-radius:7px;border:1px solid #2ec27e;background:#123a2a;color:#d6ffe9;cursor:pointer;white-space:nowrap}
+.actv .rb button:hover{background:#1b5a40}
+.actv .rb button.all{border-color:#9fb3d9;background:#1e2d4d;color:#fff}
+html.tv .actv .rb{display:none}
+#dynStat{font-size:13px;text-align:right;margin:-6px 0 6px;min-height:16px}
+#dynStat.ok{color:var(--green)} #dynStat.warn{color:#ffd166} #dynStat.err{color:#ff6b6b} #dynStat.man{color:var(--muted)}
+#dynStat button{font-family:inherit;font-size:12px;margin-left:6px;padding:1px 8px;border-radius:5px;border:1px solid #ffd166;background:#3a3010;color:#ffe9a8;cursor:pointer}
+html.tv #dynStat{display:none!important}
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1e2d4d;border:1px solid #4a6aa6;color:#fff;border-radius:10px;padding:10px 16px;font-size:17px;display:none;gap:12px;align-items:center;z-index:50;box-shadow:0 6px 20px #000a}
+#toast button{font-family:inherit;font-size:15px;padding:4px 12px;border-radius:6px;border:1px solid #ffd166;background:#3a3010;color:#ffe9a8;cursor:pointer}
+html.tv #toast{display:none!important}
 </style>
 </head>
 <body>
@@ -358,8 +374,9 @@ html.tv #dynStat{display:none}
     <div class="ltop">
       <section id="pCars" class="panel">
         <h2><span class="bar"></span>車輛動態 <span class="hint">（點車輛切換狀態）</span>
-          <span class="acts"><button class="act pri" onclick="openDispatch()">🚨 出動</button><button class="act" onclick="openDyn()" title="把中山分隊的人車動態寫入派遣科動態表">⇪ 同步動態表</button></span></h2>
-        <div class="hint" id="dynStat" style="margin:-6px 0 6px;text-align:right"></div>
+          <span class="acts"><button class="act pri" onclick="quickEms()" title="一鍵派出在隊救護車（91 優先）">🚑 救護出勤</button><button class="act pri" onclick="openDispatch()">🚨 出動</button><button class="act" onclick="openDyn()" title="把中山分隊的人車動態寫入派遣科動態表">⇪ 同步動態表</button></span></h2>
+        <div id="dynStat"></div>
+        <div id="active"></div>
         <div id="cars"></div>
       </section>
       <section id="pHead" class="panel">
@@ -400,6 +417,7 @@ html.tv #dynStat{display:none}
     <div class="hint" style="margin-top:6px" id="hintDuty">點儲存格可選擇人員（當日上班人員排在最前面），會自動儲存。<a href="#" onclick="clearTable();return false" style="color:var(--muted)">清空此日班表</a></div>
   </section>
   <div id="now" hidden></div>
+  <div id="toast"></div>
 </main>
 
 <!-- 新增出勤 -->
@@ -493,7 +511,7 @@ html.tv #dynStat{display:none}
 <!-- 同步動態表 -->
 <dialog id="dDyn" class="wide">
   <h3>⇪ 同步派遣科動態表（中山分隊區塊）</h3>
-  <div class="hint" style="font-size:14px;margin-bottom:8px">確認以下內容後按「寫入動態表」。只會寫入中山分隊的格子；「在隊人數」由動態表公式自動計算，N2 不會變動。</div>
+  <div class="hint" style="font-size:14px;margin-bottom:8px">確認以下內容後按「寫入動態表」。手動寫入會以看板為準（覆蓋動態表上的人工修改）；只會寫入中山分隊的格子，「在隊人數」由動態表公式計算，N2 不會變動。</div>
   <div id="dynPrev"></div>
   <div id="dynMsg" style="margin-top:8px;min-height:20px"></div>
   <div class="dbtns"><button onclick="dDyn.close()">取消</button><button class="ok" id="dynOk" onclick="writeDyn()">寫入動態表</button></div>
@@ -505,7 +523,9 @@ html.tv #dynStat{display:none}
   <label>輪休表 Google 試算表網址</label><input id="sUrl">
   <label>勤務表（火警任務編組表）Google 試算表網址</label><input id="sDutyUrl">
   <label style="display:flex;gap:8px;align-items:center;color:var(--text)"><input id="sFit" type="checkbox" style="width:auto">這台電腦使用等比例縮放（建議開啟；版面依視窗大小自動縮放，不會被擠壓）</label>
-  <label>派遣科動態表網址（按「同步動態表」時寫入中山分隊區塊）</label><input id="sDyn">
+  <label>派遣科動態表網址</label><input id="sDyn">
+  <label>動態表同步模式</label>
+  <select id="sDynMode"><option value="auto">自動同步（出動、返隊、換時段、帶隊官交接時自動寫入；有人工修改時暫停）</option><option value="manual">手動同步（按「同步動態表」才寫入）</option></select>
   <div class="row2"><div><label>動態表「火警」列平常的出動車輛</label><input id="sDynFire"></div><div><label>動態表「救護」列平常的出動車輛</label><input id="sDynEms"></div></div>
   <label>即時同步網址（Google Apps Script，讓電視與值班台同步）</label><input id="sSync" placeholder="https://script.google.com/macros/s/……/exec">
   <label>同步寫入密碼（只有值班台需要填；電視不用填）</label><input id="sKey" type="password" autocomplete="off">
@@ -623,6 +643,9 @@ const defaults={
   dynFire:'11',      // 動態表「火警」列平常的出動車輛
   dynEms:'91',       // 動態表「救護」列平常的出動車輛
   dynAt:0,
+  dynMode:'auto',    // 動態表同步模式：auto 自動／manual 手動
+  dynLast:null,      // 上一次成功寫入動態表的內容（自動同步用來判斷是否有人工修改）
+  dynConflict:'',
   tvScale:0,         // 電視縮放比例（0＝自動）
   tvDebug:false,     // 電視顯示診斷資訊
   tvReload:0,        // 遠端要求電視重新整理的時間
@@ -669,7 +692,7 @@ function save(){
 
 // ===== 即時同步（值班台 ⇄ 電視）=====
 // 這些資料會在各台裝置間同步；Google 試算表的資料各裝置自己讀，不在此列
-const SHARED=['dynAt','dynFire','dynEms','lowStaff','vol','awayCols','tvScale','tvDebug','tvReload','unit','vehicles','logs','notes','task','table','leaderOv','headcount','taskTpl','taskNote','taskMemo','duties','slots','roster'];
+const SHARED=['dynMode','dynAt','dynFire','dynEms','lowStaff','vol','awayCols','tvScale','tvDebug','tvReload','unit','vehicles','logs','notes','task','table','leaderOv','headcount','taskTpl','taskNote','taskMemo','duties','slots','roster'];
 let lastShared='',applyingRemote=false,livePulled=false,pushTimer=null,liveState='',liveAt=0;
 function sharedJson(){const o={};SHARED.forEach(k=>o[k]=S[k]);return JSON.stringify(o);}
 function liveShow(st,msg){
@@ -818,7 +841,7 @@ function tick(){
   document.getElementById('date').textContent=`民國 ${d.getFullYear()-1911} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日（${WD[d.getDay()]}）`;
   const k=dutyKey(d),sc=S.sched[k],si=sc?'s'+curSlot(sc,d):slotIndex(d);
   if(si!==lastSlot||k!==lastKey){if(k!==lastKey){viewOff=0;}lastSlot=si;lastKey=k;renderDuty();renderNow();renderCars();renderLogs();renderStats();renderHead();}
-  if(d.getSeconds()%30===0)renderCars();
+  if(d.getSeconds()%30===0){renderCars();dynAuto();}
   if(d.getSeconds()===0||lastLd<0){lastLd=1;renderLeader();}
 }
 
@@ -1325,6 +1348,7 @@ function renderHead(){
 
 // ===== 車輛 =====
 function renderCars(){
+  renderActive();
   const now=Date.now(),types=[...new Set(S.vehicles.map(v=>v.type))];
   document.getElementById('cars').innerHTML=types.map(t=>`<div class="vgroup"><div class="vlabel">${esc(t)}</div><div class="cars" style="grid-template-columns:repeat(${Math.min(3,S.vehicles.filter(v=>v.type===t).length)},minmax(0,1fr))">`+
     S.vehicles.map((v,i)=>{const a=artOf(v);return v.type!==t?'':`
@@ -1430,8 +1454,8 @@ function setCar(s){
   const v=S.vehicles[carIdx];
   if(s==='出勤中'&&v.status!=='出勤中'){dCar.close();openDispatch([v.name]);return;}
   if(v.status!==s){v.status=s;v.since=Date.now();}
-  if(s==='在隊'||s==='保養'||s==='送修'){delete v.case;delete v.crewN;}
-  save();renderCars();renderHead();dCar.close();
+  if(s==='在隊'||s==='保養'||s==='送修'){delete v.case;delete v.crewN;delete v.grp;}
+  dCar.close();afterCarChange();
 }
 
 // ===== 出動 =====
@@ -1490,7 +1514,86 @@ function saveDispatch(){
   const type=dp.type==='其他'?(document.getElementById('dpOther').value.trim()||'其他'):dp.type;
   const now=Date.now(),grp=now;   // 同一次出動的車輛共用編號，動態表會合併成一列
   cars.forEach(n=>{const v=carBy(n);v.status='出勤中';v.since=now;v.case=type;v.crewN=dp.sel[n];v.grp=grp;});
-  save();renderCars();renderHead();dDisp.close();
+  dDisp.close();afterCarChange();
+}
+
+// ===== 出勤中列表與返隊 =====
+function outGroups(){
+  const g={};
+  S.vehicles.filter(v=>v.status==='出勤中'||v.status==='返隊中').forEach(v=>{const k=v.grp||('c'+v.name);(g[k]=g[k]||{id:k,item:v.case||'出勤',cars:[],since:v.since}).cars.push(v);g[k].since=Math.min(g[k].since,v.since);});
+  return Object.values(g).sort((a,b)=>a.since-b.since);
+}
+function renderActive(){
+  const el=document.getElementById('active');if(!el)return;
+  const gs=outGroups(),now=Date.now();
+  el.innerHTML=gs.map(g=>{
+    const fire=g.cars.filter(v=>v.type==='水箱車'),ems=g.cars.filter(v=>v.type==='救護車');
+    const icon=g.item==='火警'?'🔥':g.item==='救護'?'🚑':'🚨';
+    const btn=[];
+    if(fire.length&&g.cars.length>fire.length)btn.push(`<button onclick="returnCars('${g.id}','fire')">${fire.map(v=>v.name).join('+')} 返隊</button>`);
+    if(ems.length)btn.push(`<button onclick="returnCars('${g.id}','ems')">救護返隊</button>`);
+    if(g.cars.length>1||!ems.length)btn.push(`<button class="all" onclick="returnCars('${g.id}','all')">${g.cars.length>1?'整組返隊':'返隊'}</button>`);
+    return `<div class="actv">${icon} <b>${esc(g.item)}</b>｜${g.cars.map(v=>esc(v.name)).join('+')}<span class="tm">${dur(now-g.since)}</span><span class="rb">${btn.join('')}</span></div>`;
+  }).join('');
+}
+let undoSnap=null,toastTimer=null;
+function snapCars(){return JSON.stringify(S.vehicles);}
+function toast(msg){
+  const t=document.getElementById('toast');if(!t)return;
+  t.innerHTML=`<span>${msg}</span><button onclick="undoLast()">復原</button>`;t.style.display='flex';
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>{t.style.display='none';undoSnap=null;},10000);
+}
+function undoLast(){if(!undoSnap)return;S.vehicles=JSON.parse(undoSnap);undoSnap=null;document.getElementById('toast').style.display='none';afterCarChange();}
+function afterCarChange(){save();renderCars();renderHead();dynAutoSoon();}
+function returnCars(gid,kind){
+  undoSnap=snapCars();
+  const g=outGroups().find(x=>String(x.id)===String(gid));if(!g)return;
+  const list=g.cars.filter(v=>kind==='all'||(kind==='fire'&&v.type==='水箱車')||(kind==='ems'&&v.type==='救護車'));
+  list.forEach(v=>{v.status='在隊';v.since=Date.now();delete v.case;delete v.crewN;delete v.grp;});
+  afterCarChange();toast(`${list.map(v=>v.name).join('+')} 已返隊`);
+}
+function quickEms(){
+  const v=['91','92'].map(carBy).find(x=>x&&x.status==='在隊')||S.vehicles.find(x=>x.type==='救護車'&&x.status==='在隊');
+  if(!v){alert('目前沒有在隊的救護車');return;}
+  undoSnap=snapCars();
+  const now=Date.now();v.status='出勤中';v.since=now;v.case='救護';v.crewN=v.seats||2;v.grp=now;
+  afterCarChange();toast(`🚑 ${v.name} 救護出勤（${v.crewN} 人）`);
+}
+
+// ===== 動態表自動同步 =====
+const dynKeyOf=p=>p?JSON.stringify({...p,slot:undefined}):'';
+let dynBusy=false,dynWait=0,dynTimer=null;
+function dynAutoSoon(){if(TV)return;clearTimeout(dynTimer);dynTimer=setTimeout(()=>dynAuto(),1500);}
+function dynAuto(){
+  if(TV||S.dynMode!=='auto'||dynBusy||S.dynConflict||Date.now()<dynWait)return;
+  const key=localStorage.getItem(KEY+'.key')||'';if(!key||!S.liveUrl)return;
+  const p=dynPayload();
+  if(p.onDuty==='')return;                         // 輪休表尚未讀取
+  if(dynKeyOf(p)===dynKeyOf(S.dynLast))return;      // 沒有變動
+  dynBusy=true;dynShow('ing');
+  dynSend(p,false).then(res=>{
+    dynBusy=false;
+    if(res.ok){S.dynLast=p;S.dynAt=Date.now();S.dynConflict='';save();dynShow();}
+    else if(res.conflict){S.dynConflict=res.error||'動態表有人工修改';save();dynShow();}
+    else{dynWait=Date.now()+60000;dynShow('err',res.error);}
+  });
+}
+// 傳送到 Apps Script；force=true 為手動同步（以看板為準覆蓋）
+function dynSend(payload,force){
+  return new Promise(resolve=>{
+    const key=localStorage.getItem(KEY+'.key')||'';
+    const id=(String(S.dynUrl||'').match(/\/d\/([\w-]{20,})/)||[])[1];
+    if(!id){resolve({ok:false,error:'請先在設定填入動態表網址'});return;}
+    const cb='__dy'+Math.random().toString(36).slice(2),sc=document.createElement('script');
+    const done=r=>{clearTimeout(to);delete window[cb];sc.remove();resolve(r);};
+    const to=setTimeout(()=>done({ok:false,error:'逾時'}),30000);
+    window[cb]=res=>done(res||{ok:false,error:'未知錯誤'});
+    sc.onerror=()=>done({ok:false,error:'無法連線到同步中繼站'});
+    const strip=x=>x?{...x,slot:undefined}:null;
+    sc.src=S.liveUrl+(S.liveUrl.includes('?')?'&':'?')+'action=dyn&callback='+cb+'&key='+encodeURIComponent(key)+'&id='+encodeURIComponent(id)
+      +'&force='+(force?'1':'0')+'&p='+encodeURIComponent(JSON.stringify(strip(payload)))+'&prev='+encodeURIComponent(JSON.stringify(strip(S.dynLast)))+'&_='+Date.now();
+    document.head.appendChild(sc);
+  });
 }
 
 // ===== 同步派遣科動態表 =====
@@ -1536,23 +1639,24 @@ function openDyn(){
   dDyn.showModal();
 }
 function writeDyn(){
-  const key=localStorage.getItem(KEY+'.key')||'',m=document.getElementById('dynMsg'),btn=document.getElementById('dynOk');
-  const id=(String(S.dynUrl||'').match(/\/d\/([\w-]{20,})/)||[])[1];
-  if(!id){m.className='err';m.textContent='請先在設定填入動態表網址';return;}
+  const m=document.getElementById('dynMsg'),btn=document.getElementById('dynOk');
   btn.disabled=true;m.className='';m.textContent='寫入中…';
-  const cb='__dy'+Math.random().toString(36).slice(2),sc=document.createElement('script');
-  const done=()=>{clearTimeout(to);delete window[cb];sc.remove();btn.disabled=false;};
-  const to=setTimeout(()=>{done();m.className='err';m.textContent='逾時，請稍後再試';},30000);
-  window[cb]=res=>{done();
-    if(res&&res.ok){m.className='ok';m.textContent='✔ 已寫入動態表';S.dynAt=Date.now();save();dynShow();setTimeout(()=>dDyn.close(),1200);}
-    else{m.className='err';m.textContent='寫入失敗：'+((res&&res.error)||'未知錯誤');}};
-  sc.onerror=()=>{done();m.className='err';m.textContent='無法連線到同步中繼站（Apps Script 可能尚未更新為新版程式）';};
-  sc.src=S.liveUrl+(S.liveUrl.includes('?')?'&':'?')+'action=dyn&callback='+cb+'&key='+encodeURIComponent(key)+'&id='+encodeURIComponent(id)+'&p='+encodeURIComponent(JSON.stringify(dynPayload()))+'&_='+Date.now();
-  document.head.appendChild(sc);
+  const p=dynPayload();
+  dynSend(p,true).then(res=>{
+    btn.disabled=false;
+    if(res.ok){m.className='ok';m.textContent='✔ 已寫入動態表';S.dynLast=p;S.dynAt=Date.now();S.dynConflict='';save();dynShow();setTimeout(()=>dDyn.close(),1200);}
+    else{m.className='err';m.textContent='寫入失敗：'+(res.error||'未知錯誤');}
+  });
 }
-function dynShow(){const el=document.getElementById('dynStat');if(!el)return;
-  if(!S.dynAt){el.textContent='';return;}const t=new Date(S.dynAt);
-  el.textContent=`動態表最後同步：${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}`;}
+function dynShow(st,msg){const el=document.getElementById('dynStat');if(!el)return;
+  const t=S.dynAt?new Date(S.dynAt):null,tt=t?`${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}`:'';
+  const auto=S.dynMode==='auto';
+  if(S.dynConflict){el.className='warn';el.innerHTML=`⚠ ${esc(S.dynConflict)}，自動同步已暫停<button onclick="openDyn()">確認並手動同步</button>`;return;}
+  if(st==='ing'){el.className='man';el.textContent='動態表同步中…';return;}
+  if(st==='err'){el.className='err';el.textContent=`⚠ 動態表同步失敗（${msg||''}），1 分鐘後重試`;return;}
+  el.className=auto?'ok':'man';
+  el.textContent=(auto?'動態表自動同步':'動態表手動同步')+(tt?`　✔ ${tt}`:'');
+}
 
 // ===== 出勤紀錄 =====
 function todayLogs(){const k=dutyKey(new Date());return S.logs.filter(l=>l.day===k);}
@@ -1606,7 +1710,7 @@ function openSettings(){
   document.getElementById('sRoster').value=S.roster.join('\n');
   document.getElementById('sUrl').value=S.sheetUrl||'';
   document.getElementById('sDutyUrl').value=S.dutyUrl||'';
-  document.getElementById('sDyn').value=S.dynUrl||'';document.getElementById('sDynFire').value=S.dynFire||'';document.getElementById('sDynEms').value=S.dynEms||'';
+  document.getElementById('sDyn').value=S.dynUrl||'';document.getElementById('sDynMode').value=S.dynMode||'auto';document.getElementById('sDynFire').value=S.dynFire||'';document.getElementById('sDynEms').value=S.dynEms||'';
   document.getElementById('sFit').checked=S.pcFit!==false;
   document.getElementById('sSync').value=S.liveUrl||'';
   document.getElementById('sTvScale').value=S.tvScale||0;document.getElementById('sTvDebug').checked=!!S.tvDebug;
@@ -1621,7 +1725,7 @@ function saveSettings(){
     const nv=old?Object.assign(old,{note,crew}):V(type,name,note,crew);
     nv.seats=seats!==''?Math.max(0,parseInt(seats)||0):defSeats(nv);return nv;
   });
-  S.dynUrl=document.getElementById('sDyn').value.trim();S.dynFire=document.getElementById('sDynFire').value.trim();S.dynEms=document.getElementById('sDynEms').value.trim();
+  S.dynUrl=document.getElementById('sDyn').value.trim();S.dynMode=document.getElementById('sDynMode').value;S.dynFire=document.getElementById('sDynFire').value.trim();S.dynEms=document.getElementById('sDynEms').value.trim();
   const nf=document.getElementById('sFit').checked;if(nf!==(S.pcFit!==false)){S.pcFit=nf;setTimeout(()=>location.reload(),300);}
   const nu=document.getElementById('sUrl').value.trim(),du=document.getElementById('sDutyUrl').value.trim(),urlChanged=nu!==S.sheetUrl||du!==S.dutyUrl;S.sheetUrl=nu;S.dutyUrl=du;
   const lu=document.getElementById('sSync').value.trim();if(lu!==S.liveUrl){S.liveUrl=lu;livePulled=false;setTimeout(livePull,200);}

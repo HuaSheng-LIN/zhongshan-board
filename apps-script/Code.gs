@@ -3,7 +3,8 @@
  *
  * 用途：
  *  1. 值班台修改車輛狀態、志工、交接事項時，把資料存到這裡；電視每 15 秒來讀一次。
- *  2. 值班台按「同步動態表」時，把中山分隊的人車動態寫入派遣科「動態表」的中山區塊。
+ *  2. 把中山分隊的人車動態寫入派遣科「動態表」的中山區塊。
+ *     自動同步：先比對動態表是否被人工修改，有修改就不覆蓋；手動同步（force=1）以看板為準。
  *
  * 設定步驟（只要做一次）：
  *  1. 打開 https://script.google.com → 「新專案」，把這整段程式貼上（取代原本內容），存檔。
@@ -92,6 +93,13 @@ function writeDyn_(p) {
     const lock = LockService.getScriptLock();
     lock.waitLock(10000);
     try {
+      // 自動同步：先比對動態表目前內容與上一次系統寫入的內容，不同代表有人工修改 → 不覆蓋
+      if (p.force !== '1') {
+        const prev = JSON.parse(p.prev || 'null');
+        if (!prev) return { ok: false, conflict: true, error: '尚未建立同步基準，請先手動同步一次' };
+        const cur = blockNow_(sh, r0, c0), exp = blockOf_(prev);
+        if (JSON.stringify(cur) !== JSON.stringify(exp)) return { ok: false, conflict: true, error: '動態表中山區塊有人工修改' };
+      }
       const R = (dr, dc) => sh.getRange(r0 + 1 + dr, c0 + 1 + dc);
       const six = (arr) => { const a = (arr || []).slice(0, 6).map(String); while (a.length < 6) a.push(''); return a; };
       R(0, 5).setValue(d.leader || '');                     // 帶隊官
@@ -116,6 +124,29 @@ function writeDyn_(p) {
   } catch (err) {
     return { ok: false, error: String(err && err.message || err) };
   }
+}
+
+// 動態表中山區塊目前的內容（只取系統會寫入的格子）
+function blockNow_(sh, r0, c0) {
+  const v = sh.getRange(r0 + 1, c0 + 1, 13, 7).getDisplayValues().map(r => r.map(x => String(x).trim()));
+  return {
+    leader: v[0][5], onDuty: v[1][1],
+    standby: v[2].slice(1, 7).concat(v[3].slice(1, 7)), stopped: v[5].slice(1, 7),
+    rows: [0, 1, 2, 3, 4].map(i => [i >= 2 ? v[9 + i - 2][0] : '', v[7 + i][1], v[7 + i][6]]),
+    rest: v[12][6]
+  };
+}
+// 把看板送來的內容換成同樣的格子形式，方便比對
+function blockOf_(d) {
+  const t = x => (x === null || x === undefined) ? '' : String(x).trim();
+  const pad = (a, n) => { a = (a || []).map(t).slice(0, n); while (a.length < n) a.push(''); return a; };
+  const rows = d.rows || [];
+  return {
+    leader: t(d.leader), onDuty: t(d.onDuty),
+    standby: pad(d.standby, 12), stopped: pad(d.stopped, 6),
+    rows: [0, 1, 2, 3, 4].map(i => { const x = rows[i] || {}; return [i >= 2 ? t(x.item) : '', t(x.veh), t(x.n)]; }),
+    rest: t(d.rest)
+  };
 }
 
 function read_() {
