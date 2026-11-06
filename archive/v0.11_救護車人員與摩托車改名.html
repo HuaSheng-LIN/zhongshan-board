@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>中山分隊 勤務看板</title>
+<style>
+:root{
+  --bg:#0b1220; --panel:#131c2e; --panel2:#1a2540; --line:#2a3858;
+  --text:#e8edf7; --muted:#8c9ab5; --red:#e5383b; --amber:#f4a261;
+  --green:#2ec27e; --blue:#4ea8de; --gray:#6c7a96;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;}
+body{display:flex;flex-direction:column;padding:12px;gap:12px;overflow:hidden}
+button{font-family:inherit;cursor:pointer}
+
+header{display:flex;align-items:center;gap:20px;background:linear-gradient(90deg,#7a0d12,#131c2e 60%);
+  border:1px solid var(--line);border-radius:12px;padding:10px 20px}
+.logo{font-size:40px}
+#unit{font-size:32px;font-weight:700;outline:none;min-width:200px}
+#unit:focus{background:#0006;border-radius:6px}
+.clock{margin-left:auto;text-align:right}
+#time{font-size:52px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:2px;line-height:1}
+#date{font-size:18px;color:#cfd8ea;margin-top:4px}
+.hbtns{display:flex;flex-direction:column;gap:6px}
+.hbtns button{background:#0005;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:13px}
+.hbtns button:hover{background:#fff2}
+
+main{flex:1;display:grid;grid-template-columns:1.45fr 1.15fr .85fr;gap:12px;min-height:0}
+.col{display:flex;flex-direction:column;gap:12px;min-height:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+  display:flex;flex-direction:column;min-height:0}
+.panel h2{margin:0 0 10px;font-size:19px;display:flex;align-items:center;gap:8px}
+.panel h2 .bar{width:5px;height:20px;background:var(--red);border-radius:3px}
+.acts{margin-left:auto;display:flex;gap:6px}
+.act{white-space:nowrap;font-size:13px;font-weight:400;background:var(--panel2);color:var(--text);
+  border:1px solid var(--line);border-radius:6px;padding:3px 10px}
+.act:hover{border-color:var(--blue)}
+.act.pri{background:var(--red);border-color:var(--red)}
+.grow{flex:1}
+.scroll{overflow:auto;min-height:0}
+.hint{font-size:12px;color:var(--muted);font-weight:400}
+
+/* 目前勤務 */
+.now{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.nowslot{grid-column:1/-1;font-size:15px;color:var(--muted)}
+.nowslot b{color:var(--amber);font-size:22px}
+.nd{background:var(--panel2);border-radius:8px;padding:6px 10px}
+.nd .k{font-size:14px;color:var(--muted)}
+.nd .v{font-size:22px;font-weight:700;min-height:30px}
+.nd .n{font-size:12px;color:var(--muted)}
+.nd.main{border-left:5px solid var(--red)}
+
+/* 勤務分配表 */
+table.duty{width:100%;border-collapse:collapse;font-size:15px;table-layout:fixed}
+table.duty th,table.duty td{border:1px solid var(--line);padding:5px 6px;text-align:center;word-break:break-all}
+table.duty th{background:var(--panel2);position:sticky;top:0;z-index:1;font-weight:600}
+table.duty td.t{color:var(--muted);font-variant-numeric:tabular-nums;width:105px}
+table.duty td.ed{cursor:pointer}
+table.duty td.ed:hover{background:#4ea8de33;outline:1px solid var(--blue)}
+.leader{display:flex;flex-direction:column;align-items:flex-end;margin-left:auto;margin-right:24px;cursor:pointer;
+  background:#0005;border:1px solid var(--line);border-radius:10px;padding:6px 16px;min-width:220px}
+.leader:hover{border-color:var(--amber)}
+.leader .k{font-size:14px;color:#cfd8ea}
+.leader .m{font-size:32px;font-weight:700;color:var(--amber);line-height:1.15}
+.leader .s{font-size:16px;color:#cfd8ea}
+.leader .s b{color:var(--text)}
+.leader .w{font-size:14px;color:#ffd166;margin-top:2px}
+#sync{margin-left:auto;font-size:13px;font-weight:400;cursor:pointer;padding:2px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel2)}
+#sync:hover{border-color:var(--blue)}
+#sync.ok{color:var(--green)} #sync.err{color:#ff6b6e} #sync.ing{color:var(--amber)}
+.onlist{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.onlist span{background:var(--panel2);border-radius:6px;padding:3px 8px;font-size:15px}
+.onlist span i{font-style:normal;font-size:11px;margin-left:3px;padding:0 4px;border-radius:4px}
+.onlist .out i{background:#f4a26133;color:var(--amber)}
+.onlist .tg i{background:#4ea8de33;color:var(--blue)}
+.onlist .ld{border:1px solid var(--amber)}
+.nightduty{font-size:15px;margin-top:8px;color:var(--muted)}
+.nightduty b{color:var(--text);font-weight:600}
+.pickg{font-size:13px;color:var(--muted);margin:10px 0 6px}
+.pick button.dim{opacity:.55}
+.clock{margin-left:0}
+.pick{display:flex;flex-wrap:wrap;gap:8px;max-height:320px;overflow:auto}
+.pick button{padding:10px 16px;font-size:18px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);min-width:90px}
+.pick button.on{background:var(--blue);border-color:var(--blue);color:#000;font-weight:700}
+.pick button .o{font-size:12px;margin-left:4px}
+#pkResult{font-size:20px;font-weight:700;min-height:28px;color:var(--amber)}
+table.duty tr.cur td{background:#e5383b33;font-weight:700}
+table.duty tr.cur td.t{color:#fff}
+table.duty tr.past td{opacity:.45}
+.dayflag{white-space:nowrap;font-size:14px;padding:1px 8px;border-radius:10px;background:var(--amber);color:#000;font-weight:600}
+.empty{color:var(--muted);text-align:center;padding:8px;font-size:14px}
+
+/* 車輛 */
+.vgroup{display:grid;grid-template-columns:70px 1fr;gap:8px;align-items:stretch;margin-bottom:8px}
+.vgroup:last-child{margin-bottom:0}
+.vlabel{display:flex;align-items:center;justify-content:center;background:var(--panel2);border-radius:8px;font-weight:700;font-size:15px;text-align:center}
+.cars{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.car{border-radius:8px;padding:6px 10px;background:var(--panel2);border-left:7px solid var(--green);cursor:pointer;user-select:none}
+.car .n{font-size:22px;font-weight:700;line-height:1.2}
+.car .n small{font-size:13px;color:var(--muted);font-weight:400;margin-left:6px}
+.car .s{font-size:16px;font-weight:600}
+.car .d{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.car.st-在隊{border-color:var(--green)} .car.st-在隊 .s{color:var(--green)}
+.car.st-出勤中{border-color:var(--red);animation:blink 1.2s infinite} .car.st-出勤中 .s{color:#ff6b6e}
+.car.st-返隊中{border-color:var(--amber)} .car.st-返隊中 .s{color:var(--amber)}
+.car.st-保養,.car.st-送修{border-color:var(--gray)} .car.st-保養 .s,.car.st-送修 .s{color:var(--gray)}
+@keyframes blink{50%{background:#5a1416}}
+
+/* 出勤紀錄 */
+table.log{width:100%;border-collapse:collapse;font-size:15px}
+table.log th,table.log td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left}
+table.log th{color:var(--muted);font-weight:500;position:sticky;top:0;background:var(--panel)}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:13px;font-weight:700}
+.tag.火災{background:var(--red)} .tag.救護{background:var(--blue)} .tag.救助{background:var(--amber);color:#000}
+.tag.其他{background:var(--gray)}
+.ls{cursor:pointer;font-size:13px;padding:1px 8px;border-radius:10px;border:1px solid var(--line)}
+.ls.處理中{color:#ff6b6e;border-color:#ff6b6e}
+.ls.已返隊{color:var(--muted)}
+.del{background:none;border:none;color:var(--muted);font-size:14px}
+.del:hover{color:var(--red)}
+
+/* 統計 */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{background:var(--panel2);border-radius:8px;text-align:center;padding:8px 4px}
+.stat .v{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .k{font-size:13px;color:var(--muted)}
+
+/* 上班人數 */
+.headcount{display:flex;align-items:baseline;justify-content:center;gap:18px}
+.headcount .num{font-size:64px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--green);line-height:1}
+.headcount .num small{font-size:20px;color:var(--muted);margin-left:4px}
+.headcount button{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:24px}
+.headcount button:hover{border-color:var(--blue)}
+
+#notes{flex:1;width:100%;resize:none;background:var(--panel2);color:var(--text);border:1px solid var(--line);
+  border-radius:8px;padding:10px;font-size:17px;line-height:1.6;font-family:inherit;outline:none}
+#notes:focus{border-color:var(--blue)}
+
+/* 對話框 */
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:20px;width:min(560px,92vw)}
+dialog.wide{width:min(1000px,94vw)}
+dialog::backdrop{background:#000a}
+dialog h3{margin:0 0 14px}
+dialog label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
+dialog input,dialog select,dialog textarea{width:100%;padding:8px;font-size:16px;background:var(--panel2);color:var(--text);
+  border:1px solid var(--line);border-radius:6px;font-family:inherit}
+dialog textarea{min-height:140px}
+.dbtns{display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:16px}
+.dbtns button{padding:8px 18px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:15px}
+.dbtns .ok{background:var(--red);border-color:var(--red)}
+.dbtns .ok:disabled{opacity:.4;cursor:not-allowed}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips label{margin:0;display:flex;align-items:center;gap:4px;background:var(--panel2);padding:4px 10px;border-radius:14px;color:var(--text);cursor:pointer}
+.chips input{width:auto}
+.menu{display:flex;flex-wrap:wrap;gap:8px}
+.menu button{flex:1;padding:12px;font-size:17px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.menu button:hover{border-color:var(--blue)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#impMsg{font-size:14px;margin-top:10px;min-height:20px}
+#impMsg.err{color:#ff6b6e} #impMsg.ok{color:var(--green)}
+.prev{max-height:300px;overflow:auto;margin-top:8px}
+/* 分頁 */
+.tabs{display:flex;gap:4px}
+.tabs button{font-size:17px;font-weight:700;padding:4px 12px;white-space:nowrap;border-radius:8px 8px 0 0;border:1px solid var(--line);border-bottom:none;
+  background:var(--panel2);color:var(--muted);font-family:inherit}
+.tabs button.on{background:var(--red);border-color:var(--red);color:#fff}
+/* 火警任務編組 */
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+.tcol{display:flex;flex-direction:column;gap:10px}
+.tg{display:grid;grid-template-columns:46px 1fr;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.tg .gn{background:var(--gc);color:#111;font-weight:800;font-size:19px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.15}
+.tr{display:grid;grid-template-columns:44% 1fr}
+.tr+.tr{border-top:1px solid var(--line)}
+.tr .r{background:color-mix(in srgb,var(--gc) 28%,var(--panel2));padding:3px 8px;font-size:16px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2}
+.tr .r{flex-direction:column}
+.tr .r small{font-size:11px;opacity:.85;display:block}
+.tr .p{padding:3px 10px;font-size:19px;font-weight:700;cursor:pointer;display:flex;align-items:center;background:var(--panel2)}
+.tr .p.empty{color:var(--muted);font-weight:400;font-size:14px}
+.tr .p:hover,.tout:hover{background:#4ea8de33}
+.tout{padding:6px 8px;display:flex;flex-wrap:wrap;gap:5px;align-content:flex-start;cursor:pointer;min-height:60px;background:var(--panel2)}
+.tout span{background:#0004;border-radius:6px;padding:2px 8px;font-size:16px}
+.tnote{background:#e5383b22;border:1px solid #e5383b77;border-radius:8px;padding:6px 12px;font-size:15px;line-height:1.5;text-align:center;white-space:pre-line;margin-top:10px}
+.tmemo{background:var(--panel2);border-radius:8px;padding:6px 12px;font-size:14px;line-height:1.6;color:#cfd8ea;margin-top:8px;display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center}
+.tmemo b{color:var(--amber)}
+.tmemo div{white-space:pre-line}
+.tfree{font-size:14px;color:var(--muted);margin-top:8px}
+.tfree b{color:#ffd166;font-weight:600}
+.pick button .as{display:block;font-size:11px;color:var(--amber);font-weight:400}
+.pick button.on .as{color:#000}
+.now{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.nd.dim{opacity:.45}
+table.duty td.nm{line-height:1.35;font-size:15px}
+table.duty.sheet td{padding:3px 4px}
+.src{font-size:12px;color:var(--green);margin-left:6px;white-space:nowrap}
+.tr .p .cd{margin-left:auto;font-size:12px;font-weight:400;padding:1px 6px;border-radius:5px;background:#4ea8de33;color:var(--blue);white-space:nowrap}
+.tr .p .cd.rest{background:#6c7a9633;color:var(--gray)}
+.tr .p .cd.out{background:#f4a26133;color:var(--amber)}
+.tempty{font-size:14px;color:var(--muted);padding:2px 4px}
+.tnote.left{text-align:left}
+#dutyMemo{background:#f4a26118;border:1px solid #f4a26166;border-radius:8px;padding:8px 12px;font-size:15px;line-height:1.6;white-space:pre-line;margin-bottom:8px;max-height:45%;overflow:auto}
+#dutyMemo b{color:var(--amber)}
+.car .crew{margin-top:4px;padding-top:4px;border-top:1px dashed var(--line);font-size:17px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.car .crew .ck{display:table;font-size:11px;font-weight:400;color:var(--blue);background:#4ea8de22;border-radius:4px;padding:0 5px;margin-bottom:2px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🚒</div>
+  <div>
+    <div id="unit" contenteditable="true" spellcheck="false" title="點擊可修改分隊名稱"></div>
+    <div class="hint">消防勤務看板 · 值班台</div>
+  </div>
+  <div class="leader" onclick="openLeader()" title="點擊可手動指定帶隊官">
+    <div class="k">今日帶隊官</div>
+    <div class="m" id="ldMain">—</div>
+    <div class="s" id="ldSub"></div>
+    <div class="w" id="ldWarn"></div>
+  </div>
+  <div class="clock">
+    <div id="time">--:--:--</div>
+    <div id="date"></div>
+  </div>
+  <div class="hbtns">
+    <button onclick="toggleFull()">⛶ 全螢幕</button>
+    <button onclick="openSettings()">⚙ 設定</button>
+  </div>
+</header>
+
+<main>
+  <div class="col">
+    <section class="panel">
+      <h2><span class="bar"></span>目前勤務</h2>
+      <div class="now" id="now"></div>
+    </section>
+    <section class="panel grow">
+      <h2><span class="tabs"><button id="tabTask" onclick="setTab('task')">🔥 火警任務編組</button><button id="tabDuty" onclick="setTab('duty')">勤務分配表</button></span>
+        <span id="viewDay" class="hint"></span>
+        <span class="acts">
+          <button class="act" onclick="shiftView(-1)">◀ 前一天</button>
+          <button class="act" onclick="shiftView(0)">今天</button>
+          <button class="act" onclick="shiftView(1)">後一天 ▶</button>
+          <button class="act pri" onclick="openImport()">🔄 同步／讀取</button>
+        </span></h2>
+      <div class="scroll grow" id="wrapDuty"><table class="duty" id="duty"></table></div>
+      <div class="hint" style="margin-top:6px" id="hintDuty">點儲存格可選擇人員（當日上班人員排在最前面），會自動儲存。<a href="#" onclick="clearTable();return false" style="color:var(--muted)">清空此日班表</a></div>
+      <div class="scroll grow" id="wrapTask"><div id="task"></div></div>
+      <div class="hint" style="margin-top:6px" id="hintTask">點名字格子即可從當日上班人員中選人，有變動直接改。<span id="taskAt"></span>　<a href="#" onclick="clearTask();return false" style="color:var(--muted)">清空此日編組</a></div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="panel">
+      <h2><span class="bar"></span>車輛動態 <span class="hint">（點車輛切換狀態）</span></h2>
+      <div id="cars"></div>
+    </section>
+    <section class="panel grow">
+      <h2><span class="bar"></span>今日出勤紀錄
+        <span class="acts"><button class="act pri" onclick="openCase()">＋ 新增出勤</button></span></h2>
+      <div class="scroll grow">
+        <table class="log"><thead><tr><th>時間</th><th>案類</th><th>地點 / 摘要</th><th>出勤車輛</th><th>狀態</th><th></th></tr></thead>
+        <tbody id="logs"></tbody></table>
+      </div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="panel">
+      <h2><span class="bar"></span>今日上班人員 <span id="sync" onclick="syncOnline(true)" title="點擊立即同步">—</span></h2>
+      <div class="headcount">
+        <div class="num" id="head">—</div>
+        <div class="hint" id="headDay" style="font-size:16px"></div>
+      </div>
+      <div class="nightduty" id="nightduty"></div>
+      <div class="onlist" id="onlist"></div>
+    </section>
+    <section class="panel">
+      <h2><span class="bar"></span>本日出勤統計</h2>
+      <div class="stats" id="stats"></div>
+    </section>
+    <section class="panel grow">
+      <h2><span class="bar"></span>交接 / 重要事項</h2>
+      <div id="dutyMemo" style="display:none"></div>
+      <textarea id="notes" placeholder="例：&#10;・14:00 防火宣導（○○國小）&#10;・救護車 91 氧氣瓶待補&#10;・明日 09:00 大隊督導"></textarea>
+    </section>
+  </div>
+</main>
+
+<!-- 新增出勤 -->
+<dialog id="dCase">
+  <h3>新增出勤</h3>
+  <label>受理時間</label><input id="cTime" type="time">
+  <label>案類</label>
+  <select id="cType"><option>救護</option><option>火災</option><option>救助</option><option>其他</option></select>
+  <label>地點 / 摘要</label><input id="cAddr" placeholder="例：中山路 100 號 OHCA">
+  <label>出勤車輛（勾選的車輛會自動改成「出勤中」）</label>
+  <div class="chips" id="cCars"></div>
+  <div class="dbtns"><button onclick="dCase.close()">取消</button><button class="ok" onclick="saveCase()">新增</button></div>
+</dialog>
+
+<!-- 車輛狀態 -->
+<dialog id="dCar">
+  <h3 id="carTitle"></h3>
+  <div class="menu" id="carMenu"></div>
+  <div class="dbtns"><button onclick="dCar.close()">取消</button></div>
+</dialog>
+
+<!-- 讀取輪休表 -->
+<dialog id="dImp" class="wide">
+  <h3>📥 讀取輪休表／勤務表</h3>
+  <div class="menu" style="margin-bottom:12px"><button onclick="dImp.close();syncOnline(true)">🔄 立即從 Google 試算表同步</button></div>
+  <div class="hint" style="font-size:14px;margin-bottom:6px">看板會自動每 <span id="impEvery"></span> 分鐘從 Google 試算表更新。網路有問題時，也可以手動下載檔案讀取：</div>
+  <div class="hint" style="font-size:15px;line-height:1.8">
+    1. 打開 Google 試算表「115年中山分隊輪休預定表」<br>
+    2. 上方選單「檔案」→「下載」→「Microsoft Excel (.xlsx)」<br>
+    3. 在下面選擇剛下載的檔案。輪休預定表、火警任務編組表（勤務表）都可以，會自動判斷
+  </div>
+  <label>試算表檔案（.xlsx）</label>
+  <input type="file" id="impFile" accept=".xlsx,.xls,.ods">
+  <div id="impMsg"></div>
+  <div class="dbtns">
+    <button onclick="dImp.close()">取消</button><button class="ok" id="impOk" onclick="applyImport()" disabled>套用</button>
+  </div>
+</dialog>
+
+<!-- 帶隊官 -->
+<dialog id="dLeader">
+  <h3>指定今日帶隊官</h3>
+  <div class="hint">預設依輪休表自動判斷（1～4 番），有外宿時會分成日間與 18:00 後。</div>
+  <label>日間帶隊官</label><select id="ldDay"></select>
+  <label>18:00 後帶隊官</label><select id="ldNight"></select>
+  <div class="dbtns">
+    <button style="margin-right:auto" onclick="resetLeader()">恢復自動</button>
+    <button onclick="dLeader.close()">取消</button><button class="ok" onclick="saveLeader()">確定</button>
+  </div>
+</dialog>
+
+<!-- 選擇人員 -->
+<dialog id="dPick" class="wide">
+  <h3 id="pkTitle"></h3>
+  <div class="hint" style="margin-bottom:8px">點名字選取／取消，可以選多位（依點選順序排列）</div>
+  <div class="pick" id="pkList"></div>
+  <label>其他文字（例：防火宣導、水源查察；或名冊裡沒有的名字）</label>
+  <input id="pkText" oninput="pkShow()">
+  <label>結果</label><div id="pkResult"></div>
+  <div class="dbtns">
+    <button style="margin-right:auto" onclick="pkSel=[];document.getElementById('pkText').value='';pkDraw()">清除</button>
+    <button onclick="dPick.close()">取消</button><button class="ok" onclick="pkSave()">確定</button>
+  </div>
+</dialog>
+
+<!-- 任務編組選人 -->
+<dialog id="dTask" class="wide">
+  <h3 id="tkTitle"></h3>
+  <div class="hint" id="tkHint" style="margin-bottom:6px"></div>
+  <div class="pick" id="tkList"></div>
+  <label>其他（名單裡沒有的人，直接輸入）</label><input id="tkText">
+  <div class="dbtns">
+    <button style="margin-right:auto" onclick="tkClear()">清除這格</button>
+    <button onclick="dTask.close()">取消</button><button class="ok" onclick="tkSave()">確定</button>
+  </div>
+</dialog>
+
+<!-- 設定 -->
+<dialog id="dSet">
+  <h3>⚙ 設定</h3>
+  <label>輪休表 Google 試算表網址</label><input id="sUrl">
+  <label>勤務表（火警任務編組表）Google 試算表網址</label><input id="sDutyUrl">
+  <label>自動同步間隔（分鐘）</label><input id="sMin" type="number" min="5" max="1440">
+  <label>車輛（一行一輛，格式：車種,車號,備註,顯示哪個勤務的人員）　例：救護車,91,BUQ,緊急救護</label><textarea id="sCars" style="min-height:200px"></textarea>
+  <label>隊員名冊（一行一位；讀取輪休表時會自動更新為當月人員）</label><textarea id="sRoster" style="min-height:120px"></textarea>
+  <label>火警任務編組格式（一行一組，格式：組名：職務、職務…；括號內是小字說明）</label><textarea id="sTpl" style="min-height:120px"></textarea>
+  <label>火警任務編組 注意事項</label><textarea id="sTnote" style="min-height:80px"></textarea>
+  <label>火警任務編組 備註</label><textarea id="sTmemo" style="min-height:80px"></textarea>
+  <label>勤務項目（勤務分配表欄位，用逗號分隔）</label><input id="sDuties">
+  <div class="row2">
+    <div style="grid-column:1/-1"><label>勤務時段切點（每個時段的開始時間，第一個是勤務日開始時間，用逗號分隔）</label>
+      <input id="sSlots" placeholder="8,10,12,14,16,18,20,22,6"></div>
+  </div>
+  <label>資料備份</label>
+  <div class="menu">
+    <button onclick="exportData()">⬇ 匯出備份</button>
+    <button onclick="document.getElementById('bak').click()">⬆ 匯入備份</button>
+  </div>
+  <input type="file" id="bak" accept=".json" style="display:none" onchange="importData(this)">
+  <div class="dbtns"><button onclick="dSet.close()">取消</button><button class="ok" onclick="saveSettings()">儲存</button></div>
+</dialog>
+
+<!--XLSX-->
+<script>
+const KEY='zhongshanDutyBoard.v3';
+const CAR_ST=['在隊','出勤中','返隊中','保養','送修'];
+const WD='日一二三四五六';
+const V=(type,name,note,crew='')=>({type,name,note,crew,status:'在隊',since:Date.now()});
+
+const defaults={
+  unit:'中山分隊',
+  slots:[8,10,12,14,16,18,20,22,6],  // 08-10 … 20-22、22-06、06-08
+  duties:['值班','緊急救護','二備救護','備勤','休息班','其他勤務'],
+  table:{},          // { '2026-11-5': [[...每欄], ...每時段] }
+  headcount:{},      // { '2026-11-5': 12 }
+  vehicles:[V('水箱車','11',''),V('水箱車','15',''),V('救護車','91','BUQ','緊急救護'),V('救護車','92','BLN','二備救護'),
+    V('勤務車','85',''),V('勤務車','86',''),V('摩托車','3202',''),V('摩托車','3203',''),V('摩托車','8726','')],
+  notes:'', logs:[],
+  roster:[],         // 隊員名冊
+  rot:{},            // 輪休表：{ '2026-11-5': {n,d,on:[{no,t,name,tag,out}],night:[番號],big:[番號]} }
+  rotFile:'',
+  sheetUrl:'https://docs.google.com/spreadsheets/d/12Elx8VPPKIexvkFN0-gNPH8C8vuJ0wezQHTeJfbQqSo/edit',
+  syncMin:10,        // 自動同步間隔（分鐘）
+  dutyUrl:'https://docs.google.com/spreadsheets/d/1LYh63JZA9utJaXCrqIufl95wqRTkVXGdNAUtMM-Ymww/edit',
+  sched:{},          // 勤務表（小隊長編排）：{ '2026-11-6': {cols,slots,groups,memo,note} }
+  schedFile:'',
+  syncAt:0,
+  leaderOv:{},
+  tab:'task',
+  taskTpl:[
+    {g:'11車',roles:['指揮官','駕駛','聯絡員','瞄子手（清潔2樓備勤室）','瞄子手（清潔2樓備勤室）']},
+    {g:'91車',roles:['駕駛','救護員']},
+    {g:'值',roles:['火警值班','火警值班']},
+    {g:'15車',roles:['駕駛','瞄子手']},
+    {g:'86車',roles:['駕駛','瞄子手','瞄子手','瞄子手']}
+  ],
+  taskNote:'鐵路以西火警請務必出動11.91\n如91不在隊上，請長江協助派遣其他91到場\n人力許可下非11車人員（至少2位）可補位92車',
+  taskMemo:'每日08~09時請瞄子手清潔2樓備勤室\n如遇休息班請於10:30前完成\n如外出訓練請人代理協助',
+  task:{}            // { '2026-11-6': {a:{'11車#0':'黃家浤'}, out:[], at} }        // 手動指定帶隊官 { '2026-11-5': {day,night} }
+};
+let S=load(), viewOff=0;
+
+function migrate(s){
+  // v10：摩托車改名、救護車加上當班勤務欄
+  if(!s.v10){
+    const moto=['3202','3203','8726'];
+    s.vehicles.filter(v=>v.type==='摩托車').forEach((v,i)=>{if(/^[123]$/.test(v.name)&&moto[i])v.name=moto[i];});
+    s.vehicles.forEach(v=>{if(v.type==='救護車'&&v.crew==null){v.crew=v.name==='91'?'緊急救護':v.name==='92'?'二備救護':'';}});
+    s.v10=1;
+  }
+  return s;
+}
+function load(){
+  try{const s=JSON.parse(localStorage.getItem(KEY));if(s)return migrate(Object.assign(structuredClone(defaults),s));}catch(e){}
+  return migrate(structuredClone(defaults));
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(S));}
+
+// 勤務日：開始時間以前算前一天
+const pad=n=>String(n).padStart(2,'0');
+function dutyDate(d){const x=new Date(d);if(x.getHours()<dayStart())x.setDate(x.getDate()-1);x.setHours(12,0,0,0);return x;}
+function keyOf(x){return x.getFullYear()+'-'+(x.getMonth()+1)+'-'+x.getDate();}
+function dutyKey(d){return keyOf(dutyDate(d));}
+function viewDate(){const x=dutyDate(new Date());x.setDate(x.getDate()+viewOff);return x;}
+function dayStart(){return S.slots[0];}
+const offH=h=>(h-dayStart()+24)%24;
+function slotCount(){return S.slots.length;}
+function slotIndex(d){const o=offH(d.getHours());let i=0;S.slots.forEach((h,j)=>{if(offH(h)<=o)i=j;});return i;}
+function slotLabel(i){const a=S.slots[i],b=S.slots[(i+1)%S.slots.length];return pad(a)+':00–'+pad(b)+':00';}
+function tableOf(k){if(!S.table[k])S.table[k]=[];return S.table[k];}
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function dur(ms){const m=Math.floor(ms/60000);return m<60?m+' 分':Math.floor(m/60)+' 時 '+(m%60)+' 分';}
+function rocDate(x){return `${x.getFullYear()-1911}/${x.getMonth()+1}/${x.getDate()}（${WD[x.getDay()]}）`;}
+function carLabel(v){return v.type.replace('車','')+' '+v.name;}
+
+// 解析「勤務表（YYYY-MM）」工作表：每日一個區塊（左：火警任務編組 A-H；右：逐時勤務 J-S）
+// 這段程式同時給 Node 測試與看板 HTML 使用（看板內嵌同一份程式）
+function parseSched(wb, XLSX){
+  const days={};
+  const cellTxt=c=>String(c??'').replace(/\r/g,'').trim();
+  const splitNames=c=>cellTxt(c).split(/[\n　]+|\s{2,}/).map(x=>x.trim()).filter(Boolean);
+  const T=/^(\d{1,2}):(\d{2})\s*[～~\-–—至]\s*(\d{1,2}):(\d{2})$/;
+  wb.SheetNames.filter(n=>/^勤務表[（(]\d{4}-\d{1,2}[）)]$/.test(n.trim())).forEach(sn=>{
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:false,defval:''}).map(r=>r.map(cellTxt));
+    // 找每日區塊的開頭：某列有 YYYY-MM-DD 日期，且 A 欄含「火警任務編組」或 J 欄含「勤務表」
+    const starts=[];
+    rows.forEach((r,i)=>{
+      const dc=r.findIndex(c=>/^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(c));
+      if(dc>=0&&(/任務編組/.test(r[0])||/勤務表/.test(r.join(''))))starts.push({i,date:r[dc].match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/)});
+    });
+    starts.forEach((st,bi)=>{
+      const end=bi+1<starts.length?starts[bi+1].i:rows.length;
+      const blk=rows.slice(st.i,end);
+      const key=`${+st.date[1]}-${+st.date[2]}-${+st.date[3]}`;
+      // 表頭列：含「時段」
+      const hi=blk.findIndex(r=>r.includes('時段'));if(hi<0)return;
+      const hdr=blk[hi],tc=hdr.indexOf('時段');
+      const cols=[];for(let j=tc+1;j<hdr.length;j++)if(hdr[j])cols.push([j,hdr[j]]);
+      // 逐時勤務
+      const slots=[];
+      blk.slice(hi+1).forEach(r=>{
+        const m=r[tc].replace(/\s/g,'').match(T);if(!m)return;
+        const cells={};cols.forEach(([j,name])=>{cells[name]=splitNames(r[j]);});
+        slots.push({s:+m[1]*60+ +m[2],e:+m[3]*60+ +m[4],label:`${m[1].padStart(2,'0')}:${m[2]}–${m[3].padStart(2,'0')}:${m[4]}`,cells});
+      });
+      // 火警任務編組（左側：兩組 [車輛,任務,姓名,目前勤務]）
+      const groups=[],gmap={};
+      const lastL=Math.max(0,tc-1);
+      const left=hdr.slice(0,tc);
+      const sets=[];left.forEach((c,j)=>{if(c==='車輛')sets.push(j);});
+      let memo='',note='',check='';
+      const memoRows={};
+      sets.forEach(c0=>{
+        let g='';
+        for(const r of blk.slice(hi+1)){
+          const a=r[c0];
+          if(/^(勤務備註|備註|確認)$/.test(r[0])){break;}
+          if(a)g=a;
+          const role=r[c0+1];if(!g||!role)continue;
+          if(!gmap[g]){gmap[g]={g,rows:[]};groups.push(gmap[g]);}
+          gmap[g].rows.push({role:role.replace(/\n/g,''),name:splitNames(r[c0+2]).join(' ')});
+        }
+      });
+      blk.forEach(r=>{if(r[0]==='勤務備註')memo=r[1];else if(r[0]==='備註')note=r[1];else if(r[0]==='確認')check=r[1];});
+      days[key]={cols:cols.map(c=>c[1]),slots,groups,memo,note,check,sheet:sn};
+    });
+  });
+  return days;
+}
+
+
+// 依時間找出目前時段（支援跨夜時段，例如 22:00–06:00）
+function curSlot(sc,d){const m=d.getHours()*60+d.getMinutes();
+  const i=sc.slots.findIndex(x=>x.s<x.e?(m>=x.s&&m<x.e):(m>=x.s||m<x.e));return i<0?0:i;}
+const stripNo=n=>String(n).replace(/^\d+\s*/,'');
+// 某人在某時段的勤務
+function dutyOfName(slot,name){if(!slot)return '';const nm=stripNo(name);
+  for(const [c,list] of Object.entries(slot.cells))if(list.some(x=>stripNo(x)===nm))return c;return '';}
+
+// ===== 時鐘 =====
+let lastSlot=-1,lastKey='',lastLd=-1;
+function tick(){
+  const d=new Date();
+  document.getElementById('time').textContent=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+  document.getElementById('date').textContent=`民國 ${d.getFullYear()-1911} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日（${WD[d.getDay()]}）`;
+  const k=dutyKey(d),sc=S.sched[k],si=sc?'s'+curSlot(sc,d):slotIndex(d);
+  if(si!==lastSlot||k!==lastKey){if(k!==lastKey){viewOff=0;}lastSlot=si;lastKey=k;renderDuty();renderNow();renderCars();renderLogs();renderStats();renderHead();}
+  if(d.getSeconds()%30===0)renderCars();
+  if(d.getSeconds()===0||lastLd<0){lastLd=1;renderLeader();}
+}
+
+// ===== 目前勤務 =====
+function renderNow(){
+  const d=new Date(),sc=S.sched[dutyKey(d)];
+  if(sc&&sc.slots.length){
+    const i=curSlot(sc,d),cur=sc.slots[i],nx=sc.slots[(i+1)%sc.slots.length];
+    const MAIN=['值班','緊急救護','二備救護','備勤','休息'];
+    let h=`<div class="nowslot">目前時段 <b>${cur.label}</b>　下一時段 ${nx.label}<span class="src">● 勤務表</span></div>`;
+    sc.cols.forEach(c=>{
+      const v=cur.cells[c]||[],n=nx.cells[c]||[];
+      if(!v.length&&!MAIN.includes(c))return;
+      h+=`<div class="nd ${c==='值班'?'main':''} ${v.length?'':'dim'}"><div class="k">${esc(c)}</div><div class="v">${v.length?v.map(x=>esc(stripNo(x))).join('、'):'<span class="hint">—</span>'}</div>
+        <div class="n">下一時段 → ${n.length?n.map(x=>esc(stripNo(x))).join('、'):'—'}</div></div>`;
+    });
+    document.getElementById('now').innerHTML=h;return;
+  }
+  const t=tableOf(dutyKey(new Date())),i=slotIndex(new Date()),row=t[i]||[],next=t[(i+1)%slotCount()]||[];
+  let h=`<div class="nowslot">目前時段 <b>${slotLabel(i)}</b>　下一時段 ${slotLabel((i+1)%slotCount())}</div>`;
+  S.duties.forEach((n,c)=>{
+    h+=`<div class="nd ${c===0?'main':''}"><div class="k">${esc(n)}</div><div class="v">${esc(row[c])||'<span class="hint">—</span>'}</div>
+      <div class="n">下一班 → ${esc(next[c])||'—'}</div></div>`;
+  });
+  document.getElementById('now').innerHTML=h;
+}
+
+// ===== 勤務分配表 =====
+function shiftView(n){viewOff=n===0?0:viewOff+n;renderDuty();}
+function renderDuty(){
+  renderTask();
+  const vd=viewDate(),k=keyOf(vd),t=tableOf(k),isToday=viewOff===0,cur=slotIndex(new Date());
+  document.getElementById('viewDay').innerHTML=`<span style="white-space:nowrap">${rocDate(vd)}</span>`+(isToday?'':` <span class="dayflag">${viewOff>0?'未來':'過去'}</span>`);
+  const sc=S.sched[k];
+  document.getElementById('hintDuty').style.visibility=sc?'hidden':'';
+  if(sc&&sc.slots.length){
+    // 只顯示這一天有人的勤務欄
+    const cols=sc.cols.filter(c=>sc.slots.some(x=>(x.cells[c]||[]).length));
+    const ci=isToday?curSlot(sc,new Date()):-1;
+    let h='<tr><th style="width:96px">時段</th>'+cols.map(c=>`<th>${esc(c)}</th>`).join('')+'</tr>';
+    sc.slots.forEach((x,i)=>{
+      h+=`<tr class="${i===ci?'cur':(ci>=0&&i<ci?'past':'')}"><td class="t">${x.label}</td>`+
+        cols.map(c=>`<td class="nm">${(x.cells[c]||[]).map(n=>esc(n)).join('<br>')}</td>`).join('')+'</tr>';
+    });
+    const el=document.getElementById('duty');el.className='duty sheet';el.innerHTML=h;
+    if(isToday)el.querySelector('tr.cur')?.scrollIntoView({block:'center'});
+    return;
+  }
+  document.getElementById('duty').className='duty';
+  let h='<tr><th style="width:105px">時段</th>'+S.duties.map(d=>`<th>${esc(d)}</th>`).join('')+'</tr>';
+  for(let i=0;i<slotCount();i++){
+    const row=t[i]||[];
+    const cls=isToday?(i===cur?'cur':i<cur?'past':''):'';
+    h+=`<tr class="${cls}"><td class="t">${slotLabel(i)}</td>`+
+      S.duties.map((_,c)=>`<td class="ed" data-r="${i}" data-c="${c}" title="點一下選擇人員">${esc(row[c])}</td>`).join('')+'</tr>';
+  }
+  if(!t.some(r=>r&&r.some(Boolean)))h+=`<tr><td colspan="${S.duties.length+1}" class="empty">點格子即可選擇該時段的勤務人員</td></tr>`;
+  const el=document.getElementById('duty');el.innerHTML=h;
+  el.querySelectorAll('td.ed').forEach(td=>td.addEventListener('click',()=>openPick(k,+td.dataset.r,+td.dataset.c)));
+  if(isToday)el.querySelector('tr.cur')?.scrollIntoView({block:'center'});
+}
+function clearTable(){const k=keyOf(viewDate());if(confirm(`確定清空 ${rocDate(viewDate())} 的班表？`)){S.table[k]=[];save();renderDuty();renderNow();}}
+
+// ===== 分頁 =====
+function setTab(t){S.tab=t;save();showTab();}
+function showTab(){
+  const t=S.tab==='duty'?'duty':'task';
+  document.getElementById('tabTask').className=t==='task'?'on':'';
+  document.getElementById('tabDuty').className=t==='duty'?'on':'';
+  for(const [id,show] of [['wrapDuty',t==='duty'],['hintDuty',t==='duty'],['wrapTask',t==='task'],['hintTask',t==='task']])
+    document.getElementById(id).style.display=show?'':'none';
+}
+
+// ===== 火警任務編組 =====
+const GCOL=[[/^11/,'#e06666'],[/^9\d/,'#93c47d'],[/^1[2-9]/,'#f6b26b'],[/^8\d/,'#a4c2f4'],[/^值/,'#f6b26b']];
+const gColor=g=>(GCOL.find(([re])=>re.test(g))||[0,'#b4a7d6'])[1];
+function noOf(k,name){const r=S.rot[k];if(!r)return null;const p=r.on.find(x=>x.name===name);if(p)return p.no;
+  const e=Object.entries(r.names||{}).find(([,n])=>n===name);return e?+e[0]:null;}
+function fmtP(k,name){const no=noOf(k,name);return (no!=null?pad(no)+' ':'')+name;}
+function taskOf(k){if(!S.task[k])S.task[k]={a:{},out:[],at:0};return S.task[k];}
+function assignMap(k){const t=S.task[k]||{a:{},out:[]},m={};
+  S.taskTpl.forEach(g=>g.roles.forEach((r,i)=>{const n=t.a[g.g+'#'+i];if(n)(m[n]=m[n]||[]).push(g.g+' '+r.replace(/[（(].*$/,''));}));
+  (t.out||[]).forEach(n=>(m[n]=m[n]||[]).push('休息或外出'));return m;}
+function roleHtml(r){return esc(r).replace(/[（(](.+?)[）)]/,'<small>（$1）</small>');}
+function gLabel(g){const m=g.match(/^(\d+)(.*)$/);return m?`${m[1]}<br>${esc(m[2])}`:esc(g).split('').join('<br>');}
+function renderTaskSheet(k,sc){
+  const isToday=viewOff===0,slot=isToday?sc.slots[curSlot(sc,new Date())]:null;
+  const filled=sc.groups.filter(g=>g.rows.some(r=>r.name)),empty=sc.groups.filter(g=>!g.rows.some(r=>r.name));
+  const groups=filled.map(g=>{
+    const rows=g.rows.map(r=>{
+      const cd=r.name?dutyOfName(slot,r.name):'';
+      const cls=cd==='休息'?'rest':/外出|訓練|宣導/.test(cd)?'out':'';
+      return `<div class="tr"><div class="r">${roleHtml(r.role)}</div><div class="p ${r.name?'':'empty'}">${r.name?esc(r.name):'—'}${cd?`<span class="cd ${cls}" title="目前時段勤務">${esc(cd)}</span>`:''}</div></div>`;}).join('');
+    return {h:`<div class="tg" style="--gc:${gColor(g.g)}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:g.rows.length+1};
+  });
+  const tot=groups.reduce((a,x)=>a+x.n,0),cols=[[],[]];let acc=0;
+  groups.forEach(x=>{const c=(acc<tot/2&&acc+x.n/2<=tot/2+1)?0:1;if(c===0)acc+=x.n;else acc=1e9;cols[c].push(x.h);});
+  // 未編組（對照輪休表）
+  const r=S.rot[k],inG=new Set(sc.groups.flatMap(g=>g.rows.map(x=>stripNo(x.name)).filter(Boolean)));
+  const free=r?[...r.on].sort((a,b)=>a.no-b.no).filter(p=>!inG.has(p.name)).map(p=>esc(pad(p.no)+' '+p.name)):[];
+  document.getElementById('task').innerHTML=
+    `<div class="tgrid">${cols.map(c=>`<div class="tcol">${c.join('')}</div>`).join('')}</div>`+
+    (empty.length?`<div class="tempty">未編組車輛：${empty.map(g=>esc(g.g)).join('、')}</div>`:'')+
+    (r?`<div class="tfree">${free.length?`輪休表上班但未編組：<b>${free.join('、')}</b>`:'✔ 當日上班人員都已編組'}</div>`:'')+
+    (sc.note?`<div class="tnote left">${esc(sc.note)}</div>`:'');
+  document.getElementById('hintTask').innerHTML=`<span class="src">● 資料來自 Google 試算表「${esc(sc.sheet)}」，要修改請直接改試算表</span>${slot?'　右側小字＝目前時段的勤務':''}`;
+}
+function renderTask(){
+  const k=keyOf(viewDate()),t=S.task[k]||{a:{},out:[]};
+  const sc=S.sched[k];
+  if(sc&&sc.groups.length){renderTaskSheet(k,sc);return;}
+  document.getElementById('hintTask').innerHTML='點名字格子即可從當日上班人員中選人，有變動直接改。<span id="taskAt"></span>　<a href="#" onclick="clearTask();return false" style="color:var(--muted)">清空此日編組</a>';
+  const groups=S.taskTpl.map((g,gi)=>{
+    const rows=g.roles.map((r,i)=>{const n=t.a[g.g+'#'+i];
+      return `<div class="tr"><div class="r">${roleHtml(r)}</div><div class="p ${n?'':'empty'}" onclick="openTask(${gi},${i})">${n?esc(fmtP(k,n)):'點此選人'}</div></div>`;}).join('');
+    return {h:`<div class="tg" style="--gc:${gColor(g.g)}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:g.roles.length+1};
+  });
+  groups.push({h:`<div class="tg" style="--gc:#f1c232"><div class="gn" style="font-size:15px;line-height:1.1">休<br>息<br>或<br>外<br>出</div>
+    <div class="tout" onclick="openTask(-1)">${(t.out||[]).length?t.out.map(n=>`<span>${esc(fmtP(k,n))}</span>`).join(''):'<span class="hint" style="background:none">點此選擇休息或外出人員</span>'}</div></div>`,n:4});
+  // 分兩欄：依序放到較短的那一欄
+  // 依順序分兩欄：左欄放到約一半高度，其餘放右欄
+  const tot=groups.reduce((a,x)=>a+x.n,0),cols=[[],[]];let acc=0;
+  groups.forEach(x=>{const c=(acc<tot/2&&acc+x.n/2<=tot/2+1)?0:1;if(c===0)acc+=x.n;else acc=1e9;cols[c].push(x.h);});
+  // 未編組
+  const r=S.rot[k],am=assignMap(k);
+  const free=r?[...r.on].sort((a,b)=>a.no-b.no).filter(p=>!am[p.name]).map(p=>esc(pad(p.no)+' '+p.name)+(p.out?'(外宿)':'')):[];
+  document.getElementById('task').innerHTML=
+    `<div class="tgrid">${cols.map(c=>`<div class="tcol">${c.join('')}</div>`).join('')}</div>`+
+    (r?`<div class="tfree">${free.length?`尚未編組：<b>${free.join('、')}</b>`:'✔ 當日上班人員都已編組'}</div>`:'')+
+    (S.taskNote?`<div class="tnote">${esc(S.taskNote)}</div>`:'')+
+    (S.taskMemo?`<div class="tmemo"><b>備註</b><div>${esc(S.taskMemo)}</div></div>`:'');
+  const at=t.at?new Date(t.at):null;
+  document.getElementById('taskAt').textContent=at?`（最後修改 ${at.getMonth()+1}/${at.getDate()} ${pad(at.getHours())}:${pad(at.getMinutes())}）`:'';
+}
+let tk={},tkSel=[];
+function openTask(gi,i){
+  const k=keyOf(viewDate()),t=taskOf(k);tk={k,gi,i,multi:gi<0};
+  const cur=gi<0?[...(t.out||[])]:(t.a[S.taskTpl[gi].g+'#'+i]?[t.a[S.taskTpl[gi].g+'#'+i]]:[]);
+  const r=S.rot[k],on=r?r.on.map(p=>p.name):[];
+  tkSel=cur.filter(n=>on.includes(n)||S.roster.includes(n));
+  document.getElementById('tkText').value=cur.filter(n=>!tkSel.includes(n)).join('、');
+  document.getElementById('tkTitle').textContent=gi<0?'休息或外出':`${S.taskTpl[gi].g}　${S.taskTpl[gi].roles[i]}`;
+  document.getElementById('tkHint').textContent=gi<0?'可以選多位，再按「確定」':'點名字就會直接填入；黃色小字表示已經編在別的位置';
+  tkDraw();dTask.showModal();
+}
+function tkDraw(){
+  const k=tk.k,r=S.rot[k],am=assignMap(k);
+  const me=tk.multi?'休息或外出':S.taskTpl[tk.gi].g+' '+S.taskTpl[tk.gi].roles[tk.i].replace(/[（(].*$/,'');
+  const list=r?[...r.on].sort((a,b)=>a.no-b.no):[];
+  const others=S.roster.filter(n=>!list.some(p=>p.name===n));
+  const btn=(n,no,extra,dim)=>{const on=tkSel.includes(n);const as=(am[n]||[]).filter(x=>!(on&&x===me));
+    return `<button class="${on?'on':''} ${dim?'dim':''}" onclick="tkPick('${esc(n).replace(/'/g,'')}')">${no!=null?pad(no)+' ':''}${esc(n)}${extra}${as.length?`<span class="as">${esc(as.join('、'))}</span>`:''}</button>`;};
+  let h='';
+  if(list.length)h+='<div class="pickg" style="width:100%">當日上班（依輪休表）</div>'+list.map(p=>btn(p.name,p.no,p.out?'<small>（外宿）</small>':p.tag?`<small>（${esc(p.tag)}）</small>`:'')).join('');
+  else h+='<div class="hint" style="width:100%">這一天還沒有輪休表資料，以下是全部名冊：</div>';
+  if(others.length)h+=`<div class="pickg" style="width:100%">${list.length?'其他人員':'隊員名冊'}</div>`+others.map(n=>btn(n,null,'',list.length>0)).join('');
+  document.getElementById('tkList').innerHTML=h;
+}
+function tkPick(n){
+  if(tk.multi){const i=tkSel.indexOf(n);i>=0?tkSel.splice(i,1):tkSel.push(n);tkDraw();return;}
+  tkSel=[n];document.getElementById('tkText').value='';tkSave();
+}
+function tkClear(){tkSel=[];document.getElementById('tkText').value='';tkSave();}
+function tkSave(){
+  const t=taskOf(tk.k),extra=document.getElementById('tkText').value.split(/[、,，\s]+/).map(x=>x.trim()).filter(Boolean);
+  if(tk.multi)t.out=[...tkSel,...extra];
+  else{const key=S.taskTpl[tk.gi].g+'#'+tk.i,v=extra[0]||tkSel[0]||'';if(v)t.a[key]=v;else delete t.a[key];}
+  t.at=Date.now();save();dTask.close();renderTask();
+}
+function clearTask(){const k=keyOf(viewDate());if(confirm(`確定清空 ${rocDate(viewDate())} 的火警任務編組？`)){delete S.task[k];save();renderTask();}}
+
+// ===== 選擇人員 =====
+let pk={},pkSel=[];
+function openPick(k,r,c){
+  pk={k,r,c};const cur=(tableOf(k)[r]||[])[c]||'';
+  const toks=String(cur).split(/[\/、,，;；\s]+/).map(x=>x.trim()).filter(Boolean);
+  const known=n=>S.roster.includes(n)||(S.rot[k]&&S.rot[k].on.some(p=>p.name===n));
+  pkSel=toks.filter(known);
+  document.getElementById('pkText').value=toks.filter(x=>!known(x)).join(' ');
+  document.getElementById('pkTitle').textContent=`${slotLabel(r)}　${S.duties[c]}`;
+  pkDraw();dPick.showModal();
+}
+function pkBtn(n,dim){const i=pkSel.indexOf(n);
+  return `<button class="${i>=0?'on':''} ${dim?'dim':''}" onclick="pkToggle('${esc(n).replace(/'/g,'')}')">${esc(n)}${i>=0?`<span class="o">${i+1}</span>`:''}</button>`;}
+function pkDraw(){
+  const r=S.rot[pk.k],on=r?r.on.map(p=>p.name):[],others=S.roster.filter(n=>!on.includes(n));
+  let h='';
+  if(on.length)h+=`<div class="pickg" style="grid-column:1/-1;width:100%">當日上班（依輪休表）</div>`+on.map(n=>pkBtn(n)).join('');
+  if(others.length)h+=`<div class="pickg" style="width:100%">${on.length?'其他人員':'隊員名冊'}</div>`+others.map(n=>pkBtn(n,on.length>0)).join('');
+  document.getElementById('pkList').innerHTML=h||'<div class="hint">名冊目前是空的。請先「📥 讀取輪休表」，或在「⚙ 設定」裡輸入。</div>';
+  pkShow();
+}
+function pkToggle(n){const i=pkSel.indexOf(n);i>=0?pkSel.splice(i,1):pkSel.push(n);pkDraw();}
+function pkValue(){const t=document.getElementById('pkText').value.trim();return [pkSel.join('、'),t].filter(Boolean).join(' ');}
+function pkShow(){document.getElementById('pkResult').textContent=pkValue()||'（空白）';}
+function pkSave(){
+  const t=tableOf(pk.k);t[pk.r]=t[pk.r]||[];t[pk.r][pk.c]=pkValue();
+  save();dPick.close();renderDuty();renderNow();
+}
+
+// ===== 帶隊官 =====
+const NIGHT_FROM=18; // 18:00 後換夜間帶隊官
+function ldName(p,list){
+  if(!p)return '—';
+  if(p.t==='分隊長')return '分隊長';
+  if(/隊長/.test(p.t)){const same=list.filter(x=>x.t===p.t&&x.name[0]===p.name[0]).length>1;return (same?p.name:p.name[0])+p.t;}
+  return p.name;
+}
+function leadersOf(k){
+  const r=S.rot[k];if(!r)return null;
+  const L=r.on.filter(p=>p.no>=1&&p.no<=4).sort((a,b)=>a.no-b.no);
+  // 層級：分隊長(1番)最高，其餘依番號；受訓等(有標記)的帶隊官先不列入，請值班人員確認
+  const ok=L.filter(p=>!p.tag);
+  const dayL=ok[0];                                       // 白天：在隊者（含外宿）中番號最小
+  const nightL=ok.filter(p=>!p.out)[0];                   // 18:00 後：不外宿者中番號最小
+  const unsure=L.filter(p=>p.tag);
+  const ov=S.leaderOv[k]||{};
+  const all=r.on;
+  const pick=(nm,def)=>nm?all.find(p=>p.name===nm)||{name:nm,t:''}:def;
+  return {day:pick(ov.day,dayL),night:pick(ov.night,nightL),all:r.on,unsure:(ov.day||ov.night)?[]:unsure};
+}
+function renderLeader(){
+  const k=dutyKey(new Date()),ld=leadersOf(k),m=document.getElementById('ldMain'),sb=document.getElementById('ldSub');
+  const w=document.getElementById('ldWarn');w.textContent='';
+  if(!ld){m.textContent='—';sb.textContent='請先讀取輪休表';return;}
+  if(ld.unsure.length)w.textContent=`⚠ ${ld.unsure.map(p=>ldName(p,ld.all)+'（'+p.tag+'）').join('、')}，請點此確認`;
+  if(!ld.day&&!ld.night){m.textContent='待確認';sb.textContent='';return;}
+  const h=new Date().getHours(),isNight=h>=NIGHT_FROM||h<dayStart();
+  const dn=ldName(ld.day,ld.all),nn=ldName(ld.night,ld.all),diff=ld.day!==ld.night&&ld.night;
+  if(!isNight){m.textContent=dn;sb.innerHTML=diff?`18:00後：<b>${esc(nn)}</b>`:'';}
+  else{m.textContent=ld.night?nn:dn;sb.innerHTML=diff?`日間：${esc(dn)}${ld.day&&ld.day.out?'（外宿）':''}`:'';}
+}
+function openLeader(){
+  const k=dutyKey(new Date()),r=S.rot[k],ld=leadersOf(k);
+  const people=r?[...r.on].sort((a,b)=>a.no-b.no):[];
+  const opts=sel=>`<option value="">自動</option>`+people.map(p=>`<option ${sel&&sel.name===p.name?'selected':''} value="${esc(p.name)}">${p.no} ${esc(p.t)} ${esc(p.name)}${p.out?'（外宿）':''}</option>`).join('');
+  const ov=S.leaderOv[k]||{};
+  document.getElementById('ldDay').innerHTML=opts(ov.day&&ld.day);
+  document.getElementById('ldNight').innerHTML=opts(ov.night&&ld.night);
+  dLeader.showModal();
+}
+function saveLeader(){S.leaderOv[dutyKey(new Date())]={day:document.getElementById('ldDay').value,night:document.getElementById('ldNight').value};save();renderLeader();renderHead();dLeader.close();}
+function resetLeader(){delete S.leaderOv[dutyKey(new Date())];save();renderLeader();renderHead();dLeader.close();}
+
+// ===== 讀取輪休表 =====
+const ON_TAGS=['訓','T2',"T'2",'龍','搜','演','週'];
+function cellStatus(v){
+  v=String(v??'').trim();
+  if(v==='')return {on:true,tag:'',out:false};
+  if(ON_TAGS.includes(v))return {on:true,tag:v,out:false};
+  if(/^[╳xX]$/.test(v))return {on:true,tag:'',out:true};
+  const m=v.match(/^(訓|T'?2|演|搜|週|龍)[xX╳]$/);if(m)return {on:true,tag:m[1],out:true};
+  return {on:false};
+}
+let parsedRot=null;
+function parseRotation(wb){
+  const out={},months=[],monthPeople={};const now=new Date();
+  wb.SheetNames.forEach(sn=>{
+    const mm=sn.trim().match(/^(\d{1,2})月$/);if(!mm)return;const mon=+mm[1];
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:false,defval:''}).map(r=>r.map(c=>String(c??'').trim()));
+    const dRow=rows.findIndex(r=>r[2]==='日期');if(dRow<0)return;
+    const cols=[];for(let j=3;j<rows[dRow].length;j++){if(/^\d{1,2}$/.test(rows[dRow][j]))cols.push([j,+rows[dRow][j]]);else if(cols.length)break;}
+    if(!cols.length){ // 備援：用「星期」列推算日期欄
+      const wr=rows[dRow+1]||[];let d=0;
+      for(let j=3;j<wr.length;j++){if('日一二三四五六'.includes(wr[j])&&wr[j].length===1)cols.push([j,++d]);else if(cols.length)break;}
+    }
+    if(!cols.length)return;
+    // 用「星期」列判斷年份
+    const wdRow=rows[dRow+1]||[],wd1='日一二三四五六'.indexOf(wdRow[cols[0][0]]);
+    let year=now.getFullYear();
+    for(const y of [now.getFullYear(),now.getFullYear()+1,now.getFullYear()-1]){if(new Date(y,mon-1,cols[0][1]).getDay()===wd1){year=y;break;}}
+    const endRow=rows.findIndex((r,i)=>i>dRow&&r[0].startsWith('值宿'));
+    const nRow=rows.findIndex((r,i)=>i>dRow&&r[0].startsWith('上班戰力'));
+    const dayRow=nRow>=0&&/白天/.test(rows[nRow+1][2])?nRow+1:-1;
+    const people=rows.slice(dRow+1,endRow<0?undefined:endRow).filter(r=>/^\d+$/.test(r[1])&&r[2])
+      .map(r=>({no:+r[1],t:r[0],name:r[2],r}));
+    monthPeople[`${year}-${mon}`]=people.filter(p=>!/^[O○0〇]+$/i.test(p.name)).sort((a,b)=>a.no-b.no).map(p=>p.name);
+    const byNo=no=>people.find(p=>p.no===+no);
+    const bigRow=rows.findIndex((r,i)=>i>dRow&&r[0].startsWith('大夜'));
+    months.push(`${year-1911}/${mon}`);
+    cols.forEach(([j,day])=>{
+      const key=`${year}-${mon}-${day}`;
+      const on=[];people.forEach(p=>{const st=cellStatus(p.r[j]);if(st.on)on.push({no:p.no,t:p.t,name:p.name,tag:st.tag,out:st.out});});
+      const num=(ri)=>ri>=0&&/^\d+$/.test(rows[ri][j])?+rows[ri][j]:null;
+      const nightN=num(nRow),dayN=num(dayRow);
+      const nos=ri=>ri>=0?String(rows[ri][j]).split(/[^\d]+/).filter(Boolean).map(Number).filter(byNo):[];
+      out[key]={
+        n:nightN??on.filter(p=>!p.out&&p.t!=='役男').length,
+        d:dayN??on.filter(p=>!p.tag&&p.t!=='役男').length,
+        on,
+        night:endRow>=0?nos(endRow):[],
+        big:bigRow>=0?[...nos(bigRow),...(rows[bigRow+1]&&!rows[bigRow+1][0]?nos(bigRow+1):[])]:[],
+        names:Object.fromEntries(people.map(p=>[p.no,p.name]))
+      };
+    });
+  });
+  // 名冊：用今天所在月份的人員（沒有就用最新月份）
+  const d=dutyDate(new Date()),mk=`${d.getFullYear()}-${d.getMonth()+1}`;
+  const latest=Object.keys(monthPeople).sort((a,b)=>{const [y1,m1]=a.split('-').map(Number),[y2,m2]=b.split('-').map(Number);return y2-y1||m2-m1;})[0];
+  const roster=monthPeople[mk]||monthPeople[latest]||[];
+  return {days:out,roster,months};
+}
+function openImport(){
+  parsedRot=null;document.getElementById('impEvery').textContent=S.syncMin;document.getElementById('impFile').value='';msg('','');document.getElementById('impOk').disabled=true;dImp.showModal();
+}
+function msg(t,c){const m=document.getElementById('impMsg');m.innerHTML=t;m.className=c;}
+document.getElementById('impFile').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    let wb;try{wb=XLSX.read(new Uint8Array(r.result),{type:'array'});}catch(err){msg('檔案無法讀取：'+esc(err.message),'err');return;}
+    const res=parseRotation(wb),n=Object.keys(res.days).length,sd=parseSched(wb,XLSX),sn=Object.keys(sd).length;
+    if(!n&&!sn){msg('找不到輪休表（○月）或勤務表（勤務表（年-月））的工作表，請確認檔案。','err');return;}
+    parsedRot={...res,file:f.name,sched:sd};
+    const k=dutyKey(new Date()),t=res.days[k];
+    msg((n?`✔ 輪休表：${res.months.length} 個月、共 ${n} 天、${res.roster.length} 位人員。`+(t?`今天上班 <b>${t.n}</b> 人`:''):'')+
+      (sn?`<br>✔ 勤務表：共 ${sn} 天${sd[k]?'（含今天）':''}`:''),'ok');
+    document.getElementById('impOk').disabled=false;
+  };
+  r.readAsArrayBuffer(f);
+});
+function applyRot(res,label){if(!Object.keys(res.days).length)return;
+  Object.assign(S.rot,res.days);
+  const lim=Date.now()-400*864e5;
+  for(const kk of Object.keys(S.rot)){const [a,b,c]=kk.split('-').map(Number);if(new Date(a,b-1,c)<lim)delete S.rot[kk];}
+  if(res.roster.length)S.roster=[...res.roster];
+  const d=new Date();S.syncAt=Date.now();S.rotFile=`${label}（${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}）`;
+  save();renderLeader();renderHead();renderDuty();syncShow('ok');
+}
+function applyImport(){if(!parsedRot)return;if(Object.keys(parsedRot.days).length)applyRot(parsedRot,'檔案：'+parsedRot.file);
+  if(Object.keys(parsedRot.sched).length)applySched(parsedRot.sched,'檔案：'+parsedRot.file);dImp.close();}
+
+// ===== 線上同步 Google 試算表 =====
+let syncing=false,syncErr='';
+function sheetId(){const m=String(S.sheetUrl||'').match(/\/d\/([\w-]{20,})/);return m?m[1]:'';}
+function syncShow(st){
+  const el=document.getElementById('sync');if(!el)return;
+  const t=S.syncAt?new Date(S.syncAt):null,tt=t?`${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}`:'';
+  el.className=st;
+  el.textContent=st==='ing'?'🔄 同步中…':st==='err'?`⚠ 同步失敗${tt?'（使用 '+tt+' 資料）':''}`:tt?`✔ ${tt} 已更新`:'尚未同步';
+  el.title=(st==='err'?syncErr+'\n':'')+(S.rotFile?'輪休表：'+S.rotFile+'\n':'')+(S.schedFile?'勤務表：'+S.schedFile+'\n':'')+'點擊立即同步';
+}
+async function fetchT(url,type){
+  const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),30000);
+  try{const r=await fetch(url,{signal:ctl.signal,cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);return type==='buf'?await r.arrayBuffer():await r.text();}
+  finally{clearTimeout(to);}
+}
+// 用 <script> 方式讀取 Google 試算表（JSONP），不受瀏覽器跨網站限制，雙擊開啟的本機檔也能用
+function gvizSheet(id,sheet,range,raw){
+  return new Promise((res,rej)=>{
+    const cb='__gv'+Math.random().toString(36).slice(2),sc=document.createElement('script');
+    const done=()=>{clearTimeout(to);delete window[cb];sc.remove();};
+    const to=setTimeout(()=>{done();rej(new Error('逾時'));},30000);
+    window[cb]=data=>{done();
+      if(!data||data.status==='error'){rej(new Error((data&&data.errors&&data.errors[0]&&(data.errors[0].detailed_message||data.errors[0].message))||'讀取錯誤'));return;}
+      const aoa=(data.table.rows||[]).map(r=>(r.c||[]).map(c=>c?(c.f!=null?c.f:(c.v==null?'':String(c.v))):''));
+      res(raw?aoa:XLSX.utils.aoa_to_sheet(aoa));};
+    sc.onerror=()=>{done();rej(new Error('無法讀取，請確認試算表已開放「知道連結的任何人都能檢視」'));};
+    sc.src=`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:json;responseHandler:${cb}&headers=0&sheet=${encodeURIComponent(sheet)}${range?'&range='+range:''}&_=${Date.now()}`;
+    document.head.appendChild(sc);
+  });
+}
+// JSONP 讀取時，Google 會清掉文字欄裡的數字；把「上班戰力、值宿、大夜」這幾列單獨再讀一次補回來
+async function fixNumRows(id,wb){
+  for(const sn of wb.SheetNames){
+    const ws=wb.Sheets[sn],rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''}).map(r=>r.map(c=>String(c).trim()));
+    const nRow=rows.findIndex(r=>r[0].startsWith('上班戰力')),vRow=rows.findIndex(r=>r[0].startsWith('值宿'));
+    for(const [r0,cnt] of [[nRow,2],[vRow,3]]){
+      if(r0<0)continue;
+      try{
+        const aoa=await gvizSheet(id,sn,`A${r0+1}:AJ${r0+cnt}`,true);
+        aoa.forEach((r,i)=>r.forEach((v,j)=>{if(v!==''){ws[XLSX.utils.encode_cell({r:r0+i,c:j})]={t:'s',v:String(v)};}}));
+      }catch(e){}
+    }
+  }
+}
+async function fetchBook(id,fallbackNames){
+  const base=`https://docs.google.com/spreadsheets/d/${id}`;
+  try{const buf=await fetchT(`${base}/export?format=xlsx`,'buf');return {wb:XLSX.read(new Uint8Array(buf),{type:'array'}),how:'xlsx'};}
+  catch(e1){
+    const wb={SheetNames:[],Sheets:{}},errs=[];
+    for(const sn of fallbackNames){   // 依序讀，避免同時送太多請求
+      try{const ws=await gvizSheet(id,sn);wb.SheetNames.push(sn);wb.Sheets[sn]=ws;}catch(e){errs.push(e.message);}
+    }
+    if(!wb.SheetNames.length)throw new Error([...new Set(errs)][0]||e1.message);
+    return {wb,how:'jsonp'};
+  }
+}
+function applySched(days,label){
+  Object.assign(S.sched,days);
+  const lim=Date.now()-60*864e5;
+  for(const kk of Object.keys(S.sched)){const [a,b,c]=kk.split('-').map(Number);if(new Date(a,b-1,c)<lim)delete S.sched[kk];}
+  const d=new Date();S.schedFile=`${label}（${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}）`;
+  save();lastSlot=-1;renderDuty();renderNow();renderMemo();renderCars();
+}
+async function syncOnline(manual){
+  if(syncing)return;
+  const rid=sheetId(),did=(String(S.dutyUrl||'').match(/\/d\/([\w-]{20,})/)||[])[1];
+  if(!rid&&!did){if(manual)alert('請先在「⚙ 設定」填入 Google 試算表網址');return;}
+  syncing=true;syncShow('ing');const errs=[];
+  // 1. 輪休預定表
+  if(rid)try{
+    const d0=dutyDate(new Date()),{wb,how}=await fetchBook(rid,[0,1,-1].map(o=>(new Date(d0.getFullYear(),d0.getMonth()+o,1).getMonth()+1)+'月'));
+    // CSV 備援時，確認工作表 A1 真的是該月
+    wb.SheetNames.forEach(sn=>{const a1=wb.Sheets[sn].A1;if(/^\d+月$/.test(sn)&&a1&&String(a1.v).trim()!==sn)delete wb.Sheets[sn];});
+    wb.SheetNames=wb.SheetNames.filter(sn=>wb.Sheets[sn]);
+    if(how==='jsonp')await fixNumRows(rid,wb);
+    const res=parseRotation(wb);
+    if(!Object.keys(res.days).length)throw new Error('讀到檔案，但找不到「○月」工作表');
+    applyRot(res,'Google 輪休表');
+  }catch(e){errs.push('輪休表：'+e.message);}
+  // 2. 勤務表（小隊長編排）
+  if(did)try{
+    const d=dutyDate(new Date()),names=[-1,0,1].map(o=>{const x=new Date(d.getFullYear(),d.getMonth()+o,1);return `勤務表（${x.getFullYear()}-${pad(x.getMonth()+1)}）`;});
+    const {wb}=await fetchBook(did,names);
+    const days=parseSched(wb,XLSX);
+    if(!Object.keys(days).length)throw new Error('找不到「勤務表（年-月）」工作表');
+    applySched(days,'Google 勤務表');
+  }catch(e){errs.push('勤務表：'+e.message);}
+  syncing=false;
+  if(errs.length){syncErr=errs.join('\n');syncShow('err');
+    if(manual)alert('同步失敗：\n'+syncErr+'\n\n請確認網路連線，以及試算表已設為「知道連結的人可以檢視」。\n也可以改用手動下載 .xlsx 讀取。');}
+  else{syncErr='';S.syncAt=Date.now();save();syncShow('ok');}
+}
+setInterval(()=>{if(Date.now()-(S.syncAt||0)>=S.syncMin*60000)syncOnline(false);},60000);
+
+// ===== 今日勤務備註 =====
+function renderMemo(){
+  const sc=S.sched[dutyKey(new Date())],el=document.getElementById('dutyMemo');
+  if(sc&&sc.memo){el.style.display='';el.innerHTML='<b>📋 今日勤務備註</b>\n'+esc(sc.memo);}else el.style.display='none';
+}
+
+// ===== 上班人員 =====
+function renderHead(){
+  renderMemo();
+  const k=dutyKey(new Date()),r=S.rot[k];
+  if(!r){
+    document.getElementById('head').innerHTML='—';
+    document.getElementById('headDay').textContent='';
+    document.getElementById('nightduty').innerHTML='';
+    document.getElementById('onlist').innerHTML='<span class="hint" style="background:none">尚未讀取今日輪休表，請按「📥 讀取輪休表」</span>';
+    return;
+  }
+  document.getElementById('head').innerHTML=r.n+'<small>人</small>';
+  document.getElementById('headDay').innerHTML=`白天 <b style="color:var(--text);font-size:22px">${r.d}</b> 人`;
+  const nm=no=>`${no} ${esc(r.names[no]||'')}`;
+  document.getElementById('nightduty').innerHTML=
+    (r.night.length?`值宿：<b>${r.night.map(nm).join('、')}</b>　`:'')+(r.big.length?`大夜：<b>${r.big.map(nm).join('、')}</b>`:'');
+  const ld=leadersOf(k)||{};
+  document.getElementById('onlist').innerHTML=[...r.on].sort((a,b)=>a.no-b.no).map(p=>{
+    const isL=p===ld.day||p===ld.night;
+    return `<span class="${p.out?'out':p.tag?'tg':''} ${isL?'ld':''}" title="${p.no} 番 ${esc(p.t)}">${esc(p.name)}${p.out?`<i>${p.tag?esc(p.tag)+'·':''}外宿</i>`:p.tag?`<i>${esc(p.tag)}</i>`:''}${p.t==='役男'?'<i>役</i>':''}</span>`;}).join('');
+}
+
+// ===== 車輛 =====
+function renderCars(){
+  const now=Date.now(),types=[...new Set(S.vehicles.map(v=>v.type))];
+  document.getElementById('cars').innerHTML=types.map(t=>`<div class="vgroup"><div class="vlabel">${esc(t)}</div><div class="cars">`+
+    S.vehicles.map((v,i)=>v.type!==t?'':`
+      <div class="car st-${v.status}" onclick="openCar(${i})">
+        <div class="n">${esc(v.name)}${v.note?`<small>${esc(v.note)}</small>`:''}</div>
+        <div class="s">${v.status}</div>
+        <div class="d">${v.status==='在隊'?'&nbsp;':'已 '+dur(now-v.since)}</div>${crewHtml(v)}</div>`).join('')+'</div></div>').join('');
+}
+// 救護車卡片：顯示目前時段負責的勤務人員（例：91＝緊急救護、92＝二備救護）
+function crewHtml(v){
+  if(!v.crew)return '';
+  const d=new Date(),sc=S.sched[dutyKey(d)];
+  if(!sc||!sc.slots.length)return `<div class="crew"><span class="ck">${esc(v.crew)}</span>—</div>`;
+  const list=(sc.slots[curSlot(sc,d)].cells[v.crew]||[]).map(stripNo);
+  return `<div class="crew"><span class="ck">${esc(v.crew)}</span>${list.length?list.map(esc).join('、'):'—'}</div>`;
+}
+let carIdx=0;
+function openCar(i){
+  carIdx=i;const v=S.vehicles[i];document.getElementById('carTitle').textContent=`${v.type} ${v.name} — 變更狀態`;
+  document.getElementById('carMenu').innerHTML=CAR_ST.map(s=>`<button onclick="setCar('${s}')">${s}</button>`).join('');
+  dCar.showModal();
+}
+function setCar(s){const v=S.vehicles[carIdx];if(v.status!==s){v.status=s;v.since=Date.now();}save();renderCars();dCar.close();}
+
+// ===== 出勤紀錄 =====
+function todayLogs(){const k=dutyKey(new Date());return S.logs.filter(l=>l.day===k);}
+function renderLogs(){
+  const L=todayLogs().sort((a,b)=>b.ts-a.ts);
+  document.getElementById('logs').innerHTML=L.length?L.map(l=>`<tr>
+    <td>${l.time}</td><td><span class="tag ${l.type}">${l.type}</span></td><td>${esc(l.addr)}</td>
+    <td>${esc(l.cars.join('、'))}</td>
+    <td><span class="ls ${l.status}" onclick="toggleLog(${l.id})" title="點擊切換">${l.status}</span></td>
+    <td><button class="del" onclick="delLog(${l.id})" title="刪除">✕</button></td></tr>`).join('')
+    :'<tr><td colspan="6" class="hint" style="text-align:center;padding:20px">本勤務日尚無出勤紀錄</td></tr>';
+}
+function openCase(){
+  const d=new Date();document.getElementById('cTime').value=pad(d.getHours())+':'+pad(d.getMinutes());
+  document.getElementById('cAddr').value='';
+  document.getElementById('cCars').innerHTML=S.vehicles.map((v,i)=>
+    `<label><input type="checkbox" value="${i}">${esc(carLabel(v))}</label>`).join('');
+  dCase.showModal();
+}
+function saveCase(){
+  const cars=[...document.querySelectorAll('#cCars input:checked')].map(x=>+x.value);
+  S.logs.push({id:Date.now(),ts:Date.now(),day:dutyKey(new Date()),time:document.getElementById('cTime').value,
+    type:document.getElementById('cType').value,addr:document.getElementById('cAddr').value.trim(),
+    cars:cars.map(i=>carLabel(S.vehicles[i])),status:'處理中'});
+  cars.forEach(i=>{S.vehicles[i].status='出勤中';S.vehicles[i].since=Date.now();});
+  const lim=Date.now()-60*864e5;S.logs=S.logs.filter(l=>l.ts>lim);
+  save();renderLogs();renderCars();renderStats();dCase.close();
+}
+function toggleLog(id){const l=S.logs.find(x=>x.id===id);l.status=l.status==='處理中'?'已返隊':'處理中';
+  if(l.status==='已返隊')S.vehicles.forEach(v=>{if(l.cars.includes(carLabel(v))&&v.status!=='在隊'){v.status='在隊';v.since=Date.now();}});
+  save();renderLogs();renderCars();}
+function delLog(id){if(confirm('刪除這筆出勤紀錄？')){S.logs=S.logs.filter(x=>x.id!==id);save();renderLogs();renderStats();}}
+
+// ===== 統計 =====
+function renderStats(){
+  const L=todayLogs(),c=t=>L.filter(l=>l.type===t).length;
+  document.getElementById('stats').innerHTML=[['救護',c('救護'),'var(--blue)'],['火災',c('火災'),'var(--red)'],
+    ['救助',c('救助'),'var(--amber)'],['合計',L.length,'var(--text)']]
+    .map(([k,v,col])=>`<div class="stat"><div class="v" style="color:${col}">${v}</div><div class="k">${k}</div></div>`).join('');
+}
+
+// ===== 設定 =====
+function openSettings(){
+  document.getElementById('sCars').value=S.vehicles.map(v=>[v.type,v.name,v.note||'',v.crew||''].join(',').replace(/,+$/,'')).join('\n');
+  document.getElementById('sDuties').value=S.duties.join('，');
+  document.getElementById('sTpl').value=S.taskTpl.map(g=>g.g+'：'+g.roles.join('、')).join('\n');
+  document.getElementById('sTnote').value=S.taskNote;document.getElementById('sTmemo').value=S.taskMemo;
+  document.getElementById('sSlots').value=S.slots.join(',');
+  document.getElementById('sRoster').value=S.roster.join('\n');
+  document.getElementById('sUrl').value=S.sheetUrl||'';
+  document.getElementById('sDutyUrl').value=S.dutyUrl||'';
+  document.getElementById('sMin').value=S.syncMin;
+  dSet.showModal();
+}
+function saveSettings(){
+  S.vehicles=document.getElementById('sCars').value.split('\n').map(s=>s.trim()).filter(Boolean).map(l=>{
+    const [type='其他',name='',note='',crew='']=l.split(/[,，]/).map(s=>s.trim());
+    const old=S.vehicles.find(v=>v.type===type&&v.name===name);
+    return old?Object.assign(old,{note,crew}):V(type,name,note,crew);
+  });
+  const nu=document.getElementById('sUrl').value.trim(),du=document.getElementById('sDutyUrl').value.trim(),urlChanged=nu!==S.sheetUrl||du!==S.dutyUrl;S.sheetUrl=nu;S.dutyUrl=du;
+  S.syncMin=Math.max(5,+document.getElementById('sMin').value||30);
+  if(urlChanged)setTimeout(()=>syncOnline(true),100);
+  const tpl=document.getElementById('sTpl').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
+    const i=l.search(/[:：]/);if(i<0)return null;
+    return {g:l.slice(0,i).trim(),roles:l.slice(i+1).split(/[、,，]/).map(x=>x.trim()).filter(Boolean)};}).filter(g=>g&&g.g&&g.roles.length);
+  if(tpl.length)S.taskTpl=tpl;
+  S.taskNote=document.getElementById('sTnote').value.trim();S.taskMemo=document.getElementById('sTmemo').value.trim();
+  S.duties=document.getElementById('sDuties').value.split(/[,，、]/).map(s=>s.trim()).filter(Boolean);
+  S.roster=[...new Set(document.getElementById('sRoster').value.split('\n').map(x=>x.trim()).filter(Boolean))];
+  const sl=document.getElementById('sSlots').value.split(/[,，、\s]+/).filter(Boolean).map(Number);
+  if(!sl.length||sl.some(h=>!Number.isInteger(h)||h<0||h>23)||new Set(sl).size!==sl.length){alert('時段切點格式錯誤，請輸入 0–23 的整點，用逗號分隔');return;}
+  const ord=sl.map(h=>(h-sl[0]+24)%24);if(ord.some((v,k)=>k&&v<=ord[k-1])){alert('時段切點要依時間先後排列（從勤務日開始時間往後）');return;}
+  if(sl.join()!==S.slots.join()){
+    if(!confirm('變更時段後，已讀取的班表時段會對不上，建議重新讀取班表。確定變更？'))return;
+    S.slots=sl;
+  }
+  save();dSet.close();renderAll();
+}
+function exportData(){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));
+  const d=new Date();a.download=`中山分隊看板備份_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`;a.click();
+}
+function importData(inp){
+  const f=inp.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{S=Object.assign(structuredClone(defaults),JSON.parse(r.result));save();renderAll();dSet.close();alert('匯入完成');}
+    catch(e){alert('檔案格式錯誤');}};r.readAsText(f);inp.value='';
+}
+function toggleFull(){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}
+
+const unitEl=document.getElementById('unit');
+unitEl.addEventListener('input',()=>{S.unit=unitEl.textContent.trim();save();});
+unitEl.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();unitEl.blur();}});
+const notesEl=document.getElementById('notes');
+notesEl.addEventListener('input',()=>{S.notes=notesEl.value;save();});
+window.addEventListener('storage',()=>{S=load();renderAll();});
+
+function renderAll(){showTab();renderLeader();renderHead();unitEl.textContent=S.unit;notesEl.value=S.notes;lastSlot=-1;lastKey='';tick();renderCars();}
+renderAll();setInterval(tick,1000);syncShow(S.syncAt?'ok':'');syncOnline(false);
+</script>
+</body>
+</html>
