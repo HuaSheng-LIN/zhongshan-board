@@ -255,6 +255,12 @@ html.tv #notes{resize:none;border-color:transparent}
 .nd.vol .vn{cursor:pointer}
 html.tv .nd.vol .vn{cursor:default}
 .car .crew.vcrew .ck{color:#d0a8ff;background:#c77dff22}
+html.tv #hc2{grid-template-columns:1fr}
+html.tv #hcIn{margin-top:auto;grid-template-columns:1fr;padding-top:10px}
+html.tv #hcIn .bx .k{font-size:22px}
+html.tv #hcIn .bx .v{font-size:110px}
+html.tv #hcIn .bx .v small{font-size:30px}
+html.tv #hcIn .sub{font-size:18px}
 </style>
 </head>
 <body>
@@ -326,6 +332,7 @@ html.tv .nd.vol .vn{cursor:default}
       <div class="hc2" id="hc2"></div>
       <div class="nightduty" id="nightduty"></div>
       <div class="onlist" id="onlist"></div>
+      <div class="hc2 tvin" id="hcIn"></div>
     </section>
     <section id="pStats" class="panel">
       <h2><span class="bar"></span>本日出勤統計</h2>
@@ -1174,16 +1181,18 @@ function renderHead(){
   renderMemo();
   const k=dutyKey(new Date()),r=S.rot[k];
   if(!r){
-    document.getElementById('hc2').innerHTML='';
+    document.getElementById('hc2').innerHTML='';document.getElementById('hcIn').innerHTML='';
     document.getElementById('nightduty').innerHTML='';
     document.getElementById('onlist').innerHTML='<span class="hint" style="background:none">尚未讀取今日輪休表，請按「📥 讀取輪休表」</span>';
     return;
   }
   const ib=inBase(k,r);
-  document.getElementById('hc2').innerHTML=
-    `<div class="bx"><div class="k">今日上班</div><div class="v">${r.n}<small>人</small></div></div>`+
-    `<div class="bx in" title="${esc(ib.detail)}"><div class="k">目前在隊</div><div class="v">${ib.n}<small>人</small></div></div>`+
-    `<div class="sub">${ib.parts.length?ib.parts.map(([a,b])=>`${esc(a)} <b>${b}</b>`).join('・'):'目前沒有人離隊'}${r.d!==r.n?`　（白天 ${r.d} 人）`:''}</div>`;
+  const upBox=`<div class="bx"><div class="k">今日上班</div><div class="v">${r.n}<small>人</small></div></div>`;
+  const inBox=`<div class="bx in" title="${esc(ib.detail)}"><div class="k">目前在隊</div><div class="v">${ib.n}<small>人</small></div></div>`;
+  const sub=`<div class="sub">${ib.parts.length?ib.parts.map(([a,b])=>`${esc(a)} <b>${b}</b>`).join('・'):'目前沒有人離隊'}${r.d!==r.n?`　（白天 ${r.d} 人）`:''}</div>`;
+  // 電視：「目前在隊」放在區塊下方空白處並放大；值班台：並排
+  if(TV){document.getElementById('hc2').innerHTML=upBox;document.getElementById('hcIn').innerHTML=inBox+sub;}
+  else{document.getElementById('hc2').innerHTML=upBox+inBox+sub;document.getElementById('hcIn').innerHTML='';}
   const nm=no=>`${pad(no)} ${esc(r.names[no]||'')}`;
   document.getElementById('nightduty').innerHTML=
     (r.night.length?`值宿：<b>${r.night.map(nm).join('、')}</b>　`:'')+(r.big.length?`大夜：<b>${r.big.map(nm).join('、')}</b>`:'');
