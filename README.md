@@ -5,7 +5,7 @@
 ## 網址
 
 - 值班台：`https://huasheng-lin.github.io/zhongshan-board/`
-- 電視（只顯示、自動縮放、分頁輪播）：`https://huasheng-lin.github.io/zhongshan-board/?tv=1`
+- 電視（只顯示、自動縮放、分頁輪播）：`https://huasheng-lin.github.io/zhongshan-board/tv`（等同 `?tv=1`）
 
 ## 資料來源
 
