@@ -228,7 +228,7 @@ html.tv .now{grid-template-columns:repeat(3,1fr)}
 html.tv .car .n{font-size:30px}
 html.tv .car .s{font-size:21px}
 html.tv #pTab .tr{grid-template-columns:34% 1fr}
-html.tv #pTab .tr .p .pc{font-size:21px}
+html.tv #pTab .tr .p .pc{font-size:var(--fs,21px)}
 html.tv #pTab .tr .r{font-size:18px}
 html.tv #pTab .tg .gn{font-size:23px;width:auto}
 html.tv #pTab .tg{grid-template-columns:52px 1fr}
@@ -391,6 +391,56 @@ html.tv .actv .tm{font-size:18px}
 #cars .car{height:100%;display:flex;flex-direction:column}
 #cars .car.art{background-size:100% 100%,auto min(62%,118px);background-position:0 0,right 4px top 8px}
 #cars .car .crew{margin-top:auto}
+/* ===== v1.17 字卡放大 1.25 倍 ===== */
+.pc b{min-width:1.8em;padding:0 .22em}
+.pc .pn{padding:0 .45em 0 .36em}
+table.duty td.nm .pc{font-size:var(--fs,22.5px)}
+.tr .p .pc{font-size:21px}
+.onlist .pc{font-size:var(--fs,24px)}
+.nightduty .pc{font-size:17.5px}
+.car .crew .pc{font-size:19px}
+html.tv #pDuty table.duty td.nm .pc{font-size:var(--fs,23.5px)}
+html.tv #pTab .tr .p .pc{font-size:var(--fs,26px)}
+html.tv .onlist .pc{font-size:var(--fs,24px)}
+/* 給字卡更多空間 */
+.ltop{grid-template-columns:1.22fr 1fr!important}
+#pDuty table.duty td.t,html.tv #pDuty table.duty td.t{width:58px!important;font-size:16px}
+#pDuty table.duty th:first-child,html.tv #pDuty table.duty th:first-child{width:58px!important}
+#pDuty table.duty td.nm{padding:3px 1px}
+.onlist{gap:5px 4px}
+/* ===== v1.17 值班台火警任務編組：上 2/3 編組（放大）、下 1/3 備註 ===== */
+#wrapTask{display:flex;flex-direction:column}
+#task{flex:1;min-height:0;display:flex;flex-direction:column}
+html:not(.tv) #task .tgrid{flex:2 1 0;min-height:0;align-items:stretch}
+html:not(.tv) #task .tcol{min-height:0}
+html:not(.tv) #task .tg{flex-basis:0;min-height:0}
+html:not(.tv) #task .tg>div:last-child{display:flex;flex-direction:column}
+html:not(.tv) #task .tr{flex:1 1 0;min-height:0}
+html:not(.tv) #task .tr .r{font-size:20px}
+html:not(.tv) #task .tr .r small{font-size:13px}
+html:not(.tv) #task .tg .gn{font-size:24px}
+html:not(.tv) #task .tg{grid-template-columns:56px 1fr}
+html:not(.tv) #task .tr .p .cd{font-size:14px}
+html:not(.tv) #task .tnote{flex:1 1 0;min-height:0;overflow:auto;margin-top:10px}
+html:not(.tv) #task .tfree,html:not(.tv) #task .tempty{flex:none}
+/* ===== v1.17 交接事項：上 2/3 今日勤務備註、下 1/3 值班交接事項 ===== */
+#wrapNotes{gap:8px}
+#wrapNotes #dutyMemo{flex:2 1 0;max-height:none;min-height:0;overflow:auto;margin-bottom:0}
+.notesBox{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:6px}
+.notesBox .nh{margin:0;font-size:17px;color:#cfd8ea;display:flex;align-items:center;gap:6px}
+.notesBox .nh:before{content:'';width:4px;height:16px;background:var(--amber);border-radius:2px}
+/* ===== v1.17 出動選人 ===== */
+.dpcar{flex-wrap:wrap}
+.dpcar .who{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:14px}
+.dpcar .who .pc{font-size:15px}
+.dpcar .whob{font-family:inherit;font-size:13px;padding:2px 8px;border-radius:6px;border:1px solid #4ea8de;background:#14304f;color:#d6ebff;cursor:pointer}
+.crewpick{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-height:52vh;overflow:auto}
+.crewpick button{font-family:inherit;display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;border:2px solid transparent;background:var(--panel2);color:var(--text);cursor:pointer;text-align:left}
+.crewpick button .pc{font-size:17px}
+.crewpick button.on{border-color:#ffd166;background:#3a3010}
+.crewpick button.off{opacity:.55}
+.crewpick button i{font-style:normal;font-size:11px;color:var(--green);margin-left:auto}
+.crewpick .grp{grid-column:1/-1;font-size:13px;color:var(--muted);margin-top:4px}
 </style>
 </head>
 <body>
@@ -461,7 +511,8 @@ html.tv .actv .tm{font-size:18px}
       </div>
       <div class="grow col2" id="wrapNotes">
         <div id="dutyMemo" style="display:none"></div>
-        <textarea id="notes" placeholder="例：&#10;・14:00 防火宣導（○○國小）&#10;・救護車 91 氧氣瓶待補&#10;・明日 09:00 大隊督導"></textarea>
+        <div class="notesBox"><h3 class="nh">📝 值班交接事項</h3>
+        <textarea id="notes" placeholder="例：&#10;・14:00 防火宣導（○○國小）&#10;・救護車 91 氧氣瓶待補&#10;・明日 09:00 大隊督導"></textarea></div>
       </div>
     </section>
   </div>
@@ -555,6 +606,14 @@ html.tv .actv .tm{font-size:18px}
   <div id="dpCars" class="dpcars"></div>
   <div id="dpSum" class="hint" style="margin-top:8px;font-size:15px"></div>
   <div class="dbtns"><button onclick="dDisp.close()">取消</button><button class="ok" onclick="saveDispatch()">確定出動</button></div>
+</dialog>
+
+<!-- 出勤人員 -->
+<dialog id="dCrew" class="wide">
+  <h3 id="crTitle"></h3>
+  <div class="hint" style="margin-bottom:8px">點選出勤的人員（可多選）；名冊為全隊人員，不限當日上班</div>
+  <div class="crewpick" id="crList"></div>
+  <div class="dbtns"><button style="margin-right:auto" onclick="crSel=[];crDraw()">清除</button><button onclick="dCrew.close()">取消</button><button class="ok" onclick="crSave()">確定</button></div>
 </dialog>
 
 <!-- 同步動態表 -->
@@ -924,7 +983,7 @@ function renderNow(){
 // ===== 今日勤務表 =====
 function shiftView(n){viewOff=n===0?0:viewOff+n;renderDuty();}
 function renderDuty(){
-  renderTask();
+  renderTask();setTimeout(autoFitAll,0);
   const vd=viewDate(),k=keyOf(vd),t=tableOf(k),isToday=viewOff===0,cur=slotIndex(new Date());
   document.getElementById('viewDay').innerHTML=`<span style="white-space:nowrap">${rocDate(vd)}</span>`+(isToday?'':` <span class="dayflag">${viewOff>0?'未來':'過去'}</span>`);
   const sc=S.sched[k];
@@ -959,6 +1018,31 @@ function renderDuty(){
 }
 function clearTable(){const k=keyOf(viewDate());if(confirm(`確定清空 ${rocDate(viewDate())} 的班表？`)){S.table[k]=[];save();renderDuty();renderNow();}}
 
+// ===== 字卡自動調整大小：先用放大後的字級，若有字卡放不下就逐步縮小，確保不超出、不換行、不截斷 =====
+function fitOver(root,mode){
+  for(const c of root.querySelectorAll('.pc')){
+    if(!c.offsetParent)continue;
+    const pn=c.querySelector('.pn');if(pn&&pn.scrollWidth>pn.clientWidth+1)return true;
+    const fs=parseFloat(getComputedStyle(c).fontSize);if(c.offsetHeight>fs*1.9)return true;
+    const box=mode==='td'?c.closest('td'):mode==='p'?c.closest('.p'):null;
+    if(box){const r=c.getBoundingClientRect(),b=box.getBoundingClientRect();if(r.right>b.right-1||r.left<b.left+1)return true;
+      if(mode==='p'&&box.scrollWidth>box.clientWidth+1)return true;}
+  }
+  return false;
+}
+function autoFit(root,max,min,mode){
+  if(!root)return;root.style.setProperty('--fs',max+'px');
+  if(!root.offsetParent)return;
+  let f=max;for(let i=0;i<24&&f>min&&fitOver(root,mode);i++){f-=0.5;root.style.setProperty('--fs',f+'px');}
+}
+function autoFitAll(){
+  requestAnimationFrame(()=>{
+    autoFit(document.getElementById('duty'),TV?23.5:22.5,15,'td');
+    autoFit(document.getElementById('task'),TV?26:21,15,'p');
+    autoFit(document.getElementById('onlist'),24,15,'list');
+  });
+}
+
 // ===== 分頁 =====
 function setTab(t){S.tab=t;save();showTab();}
 function showTab(){
@@ -966,6 +1050,7 @@ function showTab(){
   [['tabDuty','duty'],['tabTask','task'],['tabNotes','notes']].forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.className=t===v?'on':'';});
   for(const [id,show] of [['wrapDuty',t==='duty'],['hintDuty',t==='duty'],['wrapTask',t==='task'],['hintTask',t==='task'],['wrapNotes',t==='notes'],['wrapLogs',false]]){
     const e=document.getElementById(id);if(e)e.style.display=show?'':'none';}
+  autoFitAll();
 }
 
 // ===== 火警任務編組 =====
@@ -988,7 +1073,7 @@ function renderTaskSheet(k,sc){
       const cd=r.name?dutyOfName(slot,r.name):'';
       const cls=cd==='休息'?'rest':/外出|訓練|宣導/.test(cd)?'out':'';
       return `<div class="tr"><div class="r">${roleHtml(r.role)}</div><div class="p ${r.name?'':'empty'}">${r.name?chip(k,r.name):'—'}${cd?`<span class="cd ${cls}" title="目前時段勤務">${esc(cd)}</span>`:''}</div></div>`;}).join('');
-    return {h:`<div class="tg" style="--gc:${gColor(g.g)}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:g.rows.length+1};
+    return {h:`<div class="tg" style="--gc:${gColor(g.g)};flex-grow:${(g.rows||g.roles).length}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:g.rows.length+1};
   });
   const tot=groups.reduce((a,x)=>a+x.n,0),cols=[[],[]];let acc=0;
   groups.forEach(x=>{const c=(acc<tot/2&&acc+x.n/2<=tot/2+1)?0:1;if(c===0)acc+=x.n;else acc=1e9;cols[c].push(x.h);});
@@ -1010,9 +1095,9 @@ function renderTask(){
   const groups=S.taskTpl.map((g,gi)=>{
     const rows=g.roles.map((r,i)=>{const n=t.a[g.g+'#'+i];
       return `<div class="tr"><div class="r">${roleHtml(r)}</div><div class="p ${n?'':'empty'}" onclick="openTask(${gi},${i})">${n?chip(k,n):'點此選人'}</div></div>`;}).join('');
-    return {h:`<div class="tg" style="--gc:${gColor(g.g)}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:g.roles.length+1};
+    return {h:`<div class="tg" style="--gc:${gColor(g.g)};flex-grow:${(g.rows||g.roles).length}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:g.roles.length+1};
   });
-  groups.push({h:`<div class="tg" style="--gc:#f1c232"><div class="gn" style="font-size:15px;line-height:1.1">休<br>息<br>或<br>外<br>出</div>
+  groups.push({h:`<div class="tg" style="--gc:#f1c232;flex-grow:3"><div class="gn" style="font-size:15px;line-height:1.1">休<br>息<br>或<br>外<br>出</div>
     <div class="tout" onclick="openTask(-1)">${(t.out||[]).length?t.out.map(n=>`<span>${esc(fmtP(k,n))}</span>`).join(''):'<span class="hint" style="background:none">點此選擇休息或外出人員</span>'}</div></div>`,n:4});
   // 分兩欄：依序放到較短的那一欄
   // 依順序分兩欄：左欄放到約一半高度，其餘放右欄
@@ -1371,6 +1456,7 @@ function renderMemo(){
 
 // ===== 上班人員 =====
 function renderHead(){
+  setTimeout(autoFitAll,0);
   renderMemo();
   const k=dutyKey(new Date()),r=S.rot[k];
   if(!r){
@@ -1489,6 +1575,8 @@ function crewHtml(v){
   return crewHtml0(v)+vh+btn;
 }
 function crewHtml0(v){
+  if((v.status==='出勤中'||v.status==='返隊中')&&v.crewNames&&v.crewNames.length)
+    return `<div class="crew"><span class="ck">出勤人員</span>${v.crewNames.map(n=>chip(dutyKey(new Date()),n)).join('')}</div>`;
   if(!v.crew)return '';
   const d=new Date(),sc=S.sched[dutyKey(d)];
   if(!sc||!sc.slots.length)return `<div class="crew"><span class="ck">${esc(v.crew)}</span>—</div>`;
@@ -1505,7 +1593,7 @@ function setCar(s){
   const v=S.vehicles[carIdx];
   if(s==='出勤中'&&v.status!=='出勤中'){dCar.close();openDispatch([v.name]);return;}
   if(v.status!==s){v.status=s;v.since=Date.now();}
-  if(s==='在隊'||s==='保養'||s==='送修'){delete v.case;delete v.crewN;delete v.grp;}
+  if(s==='在隊'||s==='保養'||s==='送修'){delete v.case;delete v.crewN;delete v.grp;delete v.crewNames;}
   dCar.close();afterCarChange();
 }
 
@@ -1528,7 +1616,7 @@ function firePresets(){
   return {list,rec,ib};
 }
 function openDispatch(pre){
-  dp={type:'火警',sel:{},other:''};
+  dp={type:'火警',sel:{},other:'',crew:{}};
   (pre||[]).forEach(n=>{const v=carBy(n);if(v)dp.sel[n]=v.seats||2;});
   if(pre&&pre.length===1){const v=carBy(pre[0]);if(v&&v.type==='救護車')dp.type='救護';}
   if(!pre||!pre.length)applyPreset(null);
@@ -1554,17 +1642,37 @@ function drawDispatch(){
   document.getElementById('dpCars').innerHTML=S.vehicles.map(v=>{const on=v.name in dp.sel,busy=!availCar(v);
     return `<label class="dpcar ${on?'on':''} ${busy?'busy':''}"><input type="checkbox" ${on?'checked':''} ${busy?'disabled':''} onchange="dpToggle('${v.name}',this.checked)">
       <b>${esc(v.name)}<span class="hint"> ${esc(v.type)}${busy?'・'+esc(v.status):''}</span></b>
-      <input type="number" min="0" max="20" value="${on?dp.sel[v.name]:(v.seats||0)}" ${on?'':'disabled'} oninput="dp.sel['${v.name}']=Math.max(0,+this.value||0);dpSum()"> 人</label>`;}).join('');
+      <input type="number" min="0" max="20" value="${on?dp.sel[v.name]:(v.seats||0)}" ${on?'':'disabled'} oninput="dp.sel['${v.name}']=Math.max(0,+this.value||0);dpSum()"> 人
+      ${on?`<div class="who"><button type="button" class="whob" onclick="event.preventDefault();event.stopPropagation();openCrew('${v.name}')">👤 選人</button>${(dp.crew[v.name]||[]).map(n=>chip(dutyKey(new Date()),n)).join('')}</div>`:''}</label>`;}).join('');
   dpSum();
 }
-function dpToggle(n,on){const v=carBy(n);if(on)dp.sel[n]=v.seats||2;else delete dp.sel[n];drawDispatch();}
+function dpToggle(n,on){const v=carBy(n);if(on)dp.sel[n]=v.seats||2;else{delete dp.sel[n];delete dp.crew[n];}drawDispatch();}
+// 出勤人員：全隊名冊（依番號），當日上班者排前面並標示
+let crCar='',crSel=[];
+function crewRoster(){
+  const k=dutyKey(new Date()),r=S.rot[k],on=new Set(r?r.on.map(p=>p.name):[]);
+  const names=[...new Set([...(S.roster||[]),...(r?r.on.map(p=>p.name):[])])];
+  const no=n=>{const x=noOf(k,n);return x==null?999:x;};
+  names.sort((a,b)=>no(a)-no(b));
+  return {k,on,list:names};
+}
+function openCrew(car){crCar=car;crSel=[...(dp.crew[car]||[])];const v=carBy(car);
+  document.getElementById('crTitle').textContent=`👤 ${car} ${v?v.type:''}｜出勤人員`;crDraw();dCrew.showModal();}
+function crDraw(){
+  const {k,on,list}=crewRoster();
+  const btn=n=>`<button class="${crSel.includes(n)?'on':''} ${on.has(n)?'':'off'}" onclick="crToggle('${esc(n).replace(/'/g,'')}')">${chip(k,n)}${on.has(n)?'<i>上班</i>':''}</button>`;
+  const a=list.filter(n=>on.has(n)),b=list.filter(n=>!on.has(n));
+  document.getElementById('crList').innerHTML=(a.length?'<div class="grp">今日上班</div>'+a.map(btn).join(''):'')+(b.length?'<div class="grp">其他隊員</div>'+b.map(btn).join(''):'')||'<div class="hint">尚未讀取輪休表名冊</div>';
+}
+function crToggle(n){const i=crSel.indexOf(n);i>=0?crSel.splice(i,1):crSel.push(n);crDraw();}
+function crSave(){dp.crew[crCar]=[...crSel];if(crSel.length)dp.sel[crCar]=crSel.length;dCrew.close();drawDispatch();}
 function dpSum(){const c=Object.keys(dp.sel),n=c.reduce((a,k)=>a+dp.sel[k],0);
   document.getElementById('dpSum').innerHTML=c.length?`出動 <b>${c.join('＋')}</b>，共 <b>${n}</b> 人`:'尚未選擇車輛';}
 function saveDispatch(){
   const cars=Object.keys(dp.sel);if(!cars.length){alert('請選擇出動車輛');return;}
   const type=dp.type==='其他'?(document.getElementById('dpOther').value.trim()||'其他'):dp.type;
   const now=Date.now(),grp=now;   // 同一次出動的車輛共用編號，動態表會合併成一列
-  cars.forEach(n=>{const v=carBy(n);v.status='出勤中';v.since=now;v.case=type;v.crewN=dp.sel[n];v.grp=grp;});
+  cars.forEach(n=>{const v=carBy(n);v.status='出勤中';v.since=now;v.case=type;v.crewN=dp.sel[n];v.grp=grp;v.crewNames=[...(dp.crew[n]||[])];});
   dDisp.close();afterCarChange();
 }
 
@@ -1601,7 +1709,7 @@ function returnCars(gid,kind){
   undoSnap=snapCars();
   const g=outGroups().find(x=>String(x.id)===String(gid));if(!g)return;
   const list=g.cars.filter(v=>kind==='all'||(kind==='fire'&&v.type==='水箱車')||(kind==='ems'&&v.type==='救護車'));
-  list.forEach(v=>{v.status='在隊';v.since=Date.now();delete v.case;delete v.crewN;delete v.grp;});
+  list.forEach(v=>{v.status='在隊';v.since=Date.now();delete v.case;delete v.crewN;delete v.grp;delete v.crewNames;});
   afterCarChange();toast(`${list.map(v=>v.name).join('+')} 已返隊`);
 }
 function quickEms(){
@@ -1843,12 +1951,12 @@ if(FIT){
       d.style.cssText='position:fixed;left:0;top:0;z-index:99;background:#ff0;color:#000;font:24px monospace;padding:8px;white-space:pre';document.documentElement.appendChild(d);}
       d.textContent=`innerWidth×innerHeight = ${innerWidth}×${innerHeight}\nclient = ${document.documentElement.clientWidth}×${document.documentElement.clientHeight}\nvisualViewport = ${vv?Math.round(vv.width)+'×'+Math.round(vv.height):'無'}\nscreen = ${screen.width}×${screen.height}  DPR = ${devicePixelRatio}\nscale = ${k.toFixed(3)}\n${window.clockInfo||'時間校正：尚未取得'}\n${navigator.userAgent}`;}
   };
-  window.tvFit=fit;
+  window.tvFit=fit;window.addEventListener('resize',()=>setTimeout(autoFitAll,50));
   fit();addEventListener('resize',fit);if(window.visualViewport)visualViewport.addEventListener('resize',fit);
   setInterval(fit,5000);   // 有些瀏覽器載入後才改變大小
 }
 lastShared=sharedJson();
-renderAll();dynShow();setInterval(tick,1000);syncShow(S.syncAt?'ok':'');syncOnline(false);
+renderAll();dynShow();setTimeout(autoFitAll,600);if(document.fonts)document.fonts.ready.then(()=>autoFitAll());setInterval(tick,1000);syncShow(S.syncAt?'ok':'');syncOnline(false);
 livePull();setInterval(livePull,TV?15000:60000);
 if(TV){
   let seenReload=null;window.tvReloadCheck=()=>{if(seenReload===null)seenReload=S.tvReload;else if(S.tvReload!==seenReload)hardReload();};
