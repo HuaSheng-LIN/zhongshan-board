@@ -239,6 +239,22 @@ html.tv #notes{resize:none;border-color:transparent}
 #live{font-size:12px;color:var(--muted);margin-top:4px;text-align:right;white-space:nowrap}
 #live.ok{color:var(--green)} #live.err{color:#ff6b6e}
 .nw{white-space:nowrap}
+/* 在隊人數 */
+.hc2{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
+.hc2 .bx{background:var(--panel2);border-radius:10px;text-align:center;padding:6px 4px}
+.hc2 .bx .k{font-size:15px;color:var(--muted)}
+.hc2 .bx .v{font-size:52px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}
+.hc2 .bx .v small{font-size:18px;color:var(--muted);margin-left:2px;font-weight:400}
+.hc2 .bx.in{border:2px solid var(--green)}
+.hc2 .bx.in .v{color:var(--green)}
+.hc2 .sub{grid-column:1/-1;font-size:14px;color:var(--muted);text-align:center}
+.hc2 .sub b{color:var(--text)}
+/* 志工 */
+.nd.vol{border-left:5px solid #c77dff}
+.nd.vol .k{color:#d0a8ff}
+.nd.vol .vn{cursor:pointer}
+html.tv .nd.vol .vn{cursor:default}
+.car .crew.vcrew .ck{color:#d0a8ff;background:#c77dff22}
 </style>
 </head>
 <body>
@@ -269,7 +285,8 @@ html.tv #notes{resize:none;border-color:transparent}
 <main>
   <div class="col">
     <section id="pNow" class="panel">
-      <h2><span class="bar"></span>目前勤務</h2>
+      <h2><span class="bar"></span>目前勤務
+        <span class="acts"><button class="act" onclick="addVol()" title="有志工來協勤時新增，會同步到電視並顯示在 91 車">＋ 志工</button></span></h2>
       <div class="now" id="now"></div>
     </section>
     <section id="pTab" class="panel grow">
@@ -306,10 +323,7 @@ html.tv #notes{resize:none;border-color:transparent}
   <div class="col">
     <section id="pHead" class="panel">
       <h2><span class="bar"></span>今日上班人員 <span id="sync" onclick="syncOnline(true)" title="點擊立即同步">—</span></h2>
-      <div class="headcount">
-        <div class="num" id="head">—</div>
-        <div class="hint" id="headDay" style="font-size:16px"></div>
-      </div>
+      <div class="hc2" id="hc2"></div>
       <div class="nightduty" id="nightduty"></div>
       <div class="onlist" id="onlist"></div>
     </section>
@@ -416,6 +430,7 @@ html.tv #notes{resize:none;border-color:transparent}
   <label>自動同步間隔（分鐘）</label><input id="sMin" type="number" min="5" max="1440">
   <label>車輛（一行一輛，格式：車種,車號,備註,顯示哪個勤務的人員）　例：救護車,91,BUQ,緊急救護</label><textarea id="sCars" style="min-height:200px"></textarea>
   <label>隊員名冊（一行一位；讀取輪休表時會自動更新為當月人員）</label><textarea id="sRoster" style="min-height:120px"></textarea>
+  <label>計算「目前在隊」時要扣掉的勤務（用逗號分隔）</label><input id="sAway">
   <label>火警任務編組格式（一行一組，格式：組名：職務、職務…；括號內是小字說明）</label><textarea id="sTpl" style="min-height:120px"></textarea>
   <label>火警任務編組 注意事項</label><textarea id="sTnote" style="min-height:80px"></textarea>
   <label>火警任務編組 備註</label><textarea id="sTmemo" style="min-height:80px"></textarea>
@@ -487,6 +502,8 @@ const defaults={
   schedFile:'',
   liveUrl:LIVE_URL,  // 即時同步（Apps Script）網址
   sharedAt:0,        // 共用資料最後修改時間
+  vol:{},            // 志工協勤 { '2026-11-6': ['王○○'] }
+  awayCols:['休息','外出勤務','宣導'],  // 算在隊人數時要扣掉的勤務
   tvScale:0,         // 電視縮放比例（0＝自動）
   tvDebug:false,     // 電視顯示診斷資訊
   tvReload:0,        // 遠端要求電視重新整理的時間
@@ -530,7 +547,7 @@ function save(){
 
 // ===== 即時同步（值班台 ⇄ 電視）=====
 // 這些資料會在各台裝置間同步；Google 試算表的資料各裝置自己讀，不在此列
-const SHARED=['tvScale','tvDebug','tvReload','unit','vehicles','logs','notes','task','table','leaderOv','headcount','taskTpl','taskNote','taskMemo','duties','slots','roster'];
+const SHARED=['vol','awayCols','tvScale','tvDebug','tvReload','unit','vehicles','logs','notes','task','table','leaderOv','headcount','taskTpl','taskNote','taskMemo','duties','slots','roster'];
 let lastShared='',applyingRemote=false,livePulled=false,pushTimer=null,liveState='',liveAt=0;
 function sharedJson(){const o={};SHARED.forEach(k=>o[k]=S[k]);return JSON.stringify(o);}
 function liveShow(st,msg){
@@ -692,7 +709,7 @@ function renderNow(){
       h+=`<div class="nd ${c==='值班'?'main':''} ${v.length?'':'dim'}"><div class="k">${esc(c)}</div><div class="v">${v.length?v.map(x=>`<span class="nw">${esc(fmtNo(dutyKey(d),x))}</span>`).join('、'):'<span class="hint">—</span>'}</div>
         <div class="n">下一時段 → ${n.length?n.map(x=>`<span class="nw">${esc(fmtNo(dutyKey(d),x))}</span>`).join('、'):'—'}</div></div>`;
     });
-    document.getElementById('now').innerHTML=h;return;
+    h+=volCard();document.getElementById('now').innerHTML=h;return;
   }
   const t=tableOf(dutyKey(new Date())),i=slotIndex(new Date()),row=t[i]||[],next=t[(i+1)%slotCount()]||[];
   let h=`<div class="nowslot">目前時段 <b>${slotLabel(i)}</b>　下一時段 ${slotLabel((i+1)%slotCount())}</div>`;
@@ -701,7 +718,7 @@ function renderNow(){
     h+=`<div class="nd ${c===0?'main':''}"><div class="k">${esc(n)}</div><div class="v">${esc(withNo(dk,row[c]))||'<span class="hint">—</span>'}</div>
       <div class="n">下一班 → ${esc(withNo(dk,next[c]))||'—'}</div></div>`;
   });
-  document.getElementById('now').innerHTML=h;
+  h+=volCard();document.getElementById('now').innerHTML=h;
 }
 
 // ===== 當日勤務表 =====
@@ -1106,6 +1123,46 @@ async function syncOnline(manual){
 }
 setInterval(()=>{if(Date.now()-(S.syncAt||0)>=S.syncMin*60000)syncOnline(false);},60000);
 
+// ===== 在隊人數 =====
+// 在隊 ＝ 今日上班 − 目前時段「休息、外出類勤務」− 出勤中／返隊中車輛上的人員（同一人只扣一次）
+function crewOf(v,k,slot){
+  if(v.crew)return slot?(slot.cells[v.crew]||[]):[];
+  const sc=S.sched[k];if(!sc)return [];
+  const g=sc.groups.find(g=>g.g===v.name+'車'||g.g===v.name);
+  return g?g.rows.map(x=>x.name).filter(Boolean):[];
+}
+function inBase(k,r){
+  const d=new Date(),sc=S.sched[k],slot=sc&&sc.slots.length?sc.slots[curSlot(sc,d)]:null;
+  const out=new Map(),parts=[];   // 姓名 → 原因
+  const add=(names,why)=>{let c=0;names.forEach(n=>{const nm=stripNo(n);if(nm&&!out.has(nm)){out.set(nm,why);c++;}});if(c)parts.push([why,c]);};
+  if(slot)(S.awayCols||[]).forEach(c=>add(slot.cells[c]||[],c));
+  S.vehicles.filter(v=>v.status==='出勤中'||v.status==='返隊中').forEach(v=>add(crewOf(v,k,slot),v.name+' 出勤'));
+  // 只扣今天有上班的人
+  const onNames=new Set(r.on.map(p=>p.name));
+  let n=0;out.forEach((_,nm)=>{if(onNames.has(nm))n++;});
+  return {n:Math.max(0,r.n-n),parts,detail:[...out].map(([a,b])=>fmtNo(k,a)+'：'+b).join('\n')};
+}
+
+// ===== 志工 =====
+function volOf(k){return (S.vol&&S.vol[k])||[];}
+function addVol(){
+  const n=(prompt('請輸入協勤志工姓名（多位請用空白或頓號分開）')||'').split(/[、,，\s]+/).map(x=>x.trim()).filter(Boolean);
+  if(!n.length)return;
+  const k=dutyKey(new Date());S.vol=S.vol||{};S.vol[k]=[...new Set([...volOf(k),...n])];
+  // 只保留 7 天
+  Object.keys(S.vol).forEach(kk=>{const [a,b,c]=kk.split('-').map(Number);if(new Date(a,b-1,c)<Date.now()-7*864e5)delete S.vol[kk];});
+  save();renderNow();renderCars();
+}
+function delVol(name){
+  if(TV)return;
+  if(!confirm(`志工「${name}」協勤結束，要移除嗎？`))return;
+  const k=dutyKey(new Date());S.vol[k]=volOf(k).filter(x=>x!==name);save();renderNow();renderCars();
+}
+function volCard(){
+  const v=volOf(dutyKey(new Date()));if(!v.length)return '';
+  return `<div class="nd vol"><div class="k">志工協勤</div><div class="v">${v.map(n=>`<span class="nw vn" onclick="delVol('${esc(n).replace(/'/g,'')}')" title="點一下移除">${esc(n)}</span>`).join('、')}</div><div class="n">${TV?'':'點名字可移除'}</div></div>`;
+}
+
 // ===== 今日勤務備註 =====
 function renderMemo(){
   const sc=S.sched[dutyKey(new Date())],el=document.getElementById('dutyMemo');
@@ -1117,14 +1174,16 @@ function renderHead(){
   renderMemo();
   const k=dutyKey(new Date()),r=S.rot[k];
   if(!r){
-    document.getElementById('head').innerHTML='—';
-    document.getElementById('headDay').textContent='';
+    document.getElementById('hc2').innerHTML='';
     document.getElementById('nightduty').innerHTML='';
     document.getElementById('onlist').innerHTML='<span class="hint" style="background:none">尚未讀取今日輪休表，請按「📥 讀取輪休表」</span>';
     return;
   }
-  document.getElementById('head').innerHTML=r.n+'<small>人</small>';
-  document.getElementById('headDay').innerHTML=`白天 <b style="color:var(--text);font-size:22px">${r.d}</b> 人`;
+  const ib=inBase(k,r);
+  document.getElementById('hc2').innerHTML=
+    `<div class="bx"><div class="k">今日上班</div><div class="v">${r.n}<small>人</small></div></div>`+
+    `<div class="bx in" title="${esc(ib.detail)}"><div class="k">目前在隊</div><div class="v">${ib.n}<small>人</small></div></div>`+
+    `<div class="sub">${ib.parts.length?ib.parts.map(([a,b])=>`${esc(a)} <b>${b}</b>`).join('・'):'目前沒有人離隊'}${r.d!==r.n?`　（白天 ${r.d} 人）`:''}</div>`;
   const nm=no=>`${pad(no)} ${esc(r.names[no]||'')}`;
   document.getElementById('nightduty').innerHTML=
     (r.night.length?`值宿：<b>${r.night.map(nm).join('、')}</b>　`:'')+(r.big.length?`大夜：<b>${r.big.map(nm).join('、')}</b>`:'');
@@ -1146,6 +1205,11 @@ function renderCars(){
 }
 // 救護車卡片：顯示目前時段負責的勤務人員（例：91＝緊急救護、92＝二備救護）
 function crewHtml(v){
+  const vols=v.type==='救護車'&&v.name==='91'?volOf(dutyKey(new Date())):[];
+  const vh=vols.length?`<div class="crew vcrew"><span class="ck">志工</span>${vols.map(esc).join('、')}</div>`:'';
+  return crewHtml0(v)+vh;
+}
+function crewHtml0(v){
   if(!v.crew)return '';
   const d=new Date(),sc=S.sched[dutyKey(d)];
   if(!sc||!sc.slots.length)return `<div class="crew"><span class="ck">${esc(v.crew)}</span>—</div>`;
@@ -1158,7 +1222,7 @@ function openCar(i){
   document.getElementById('carMenu').innerHTML=CAR_ST.map(s=>`<button onclick="setCar('${s}')">${s}</button>`).join('');
   dCar.showModal();
 }
-function setCar(s){const v=S.vehicles[carIdx];if(v.status!==s){v.status=s;v.since=Date.now();}save();renderCars();dCar.close();}
+function setCar(s){const v=S.vehicles[carIdx];if(v.status!==s){v.status=s;v.since=Date.now();}save();renderCars();renderHead();dCar.close();}
 
 // ===== 出勤紀錄 =====
 function todayLogs(){const k=dutyKey(new Date());return S.logs.filter(l=>l.day===k);}
@@ -1185,11 +1249,11 @@ function saveCase(){
     cars:cars.map(i=>carLabel(S.vehicles[i])),status:'處理中'});
   cars.forEach(i=>{S.vehicles[i].status='出勤中';S.vehicles[i].since=Date.now();});
   const lim=Date.now()-60*864e5;S.logs=S.logs.filter(l=>l.ts>lim);
-  save();renderLogs();renderCars();renderStats();dCase.close();
+  save();renderLogs();renderCars();renderStats();renderHead();dCase.close();
 }
 function toggleLog(id){const l=S.logs.find(x=>x.id===id);l.status=l.status==='處理中'?'已返隊':'處理中';
   if(l.status==='已返隊')S.vehicles.forEach(v=>{if(l.cars.includes(carLabel(v))&&v.status!=='在隊'){v.status='在隊';v.since=Date.now();}});
-  save();renderLogs();renderCars();}
+  save();renderLogs();renderCars();renderHead();}
 function delLog(id){if(confirm('刪除這筆出勤紀錄？')){S.logs=S.logs.filter(x=>x.id!==id);save();renderLogs();renderStats();}}
 
 // ===== 統計 =====
@@ -1204,6 +1268,7 @@ function renderStats(){
 function openSettings(){
   document.getElementById('sCars').value=S.vehicles.map(v=>[v.type,v.name,v.note||'',v.crew||''].join(',').replace(/,+$/,'')).join('\n');
   document.getElementById('sDuties').value=S.duties.join('，');
+  document.getElementById('sAway').value=(S.awayCols||[]).join('，');
   document.getElementById('sTpl').value=S.taskTpl.map(g=>g.g+'：'+g.roles.join('、')).join('\n');
   document.getElementById('sTnote').value=S.taskNote;document.getElementById('sTmemo').value=S.taskMemo;
   document.getElementById('sSlots').value=S.slots.join(',');
@@ -1235,6 +1300,7 @@ function saveSettings(){
     return {g:l.slice(0,i).trim(),roles:l.slice(i+1).split(/[、,，]/).map(x=>x.trim()).filter(Boolean)};}).filter(g=>g&&g.g&&g.roles.length);
   if(tpl.length)S.taskTpl=tpl;
   S.taskNote=document.getElementById('sTnote').value.trim();S.taskMemo=document.getElementById('sTmemo').value.trim();
+  S.awayCols=document.getElementById('sAway').value.split(/[,，、]/).map(x=>x.trim()).filter(Boolean);
   S.duties=document.getElementById('sDuties').value.split(/[,，、]/).map(s=>s.trim()).filter(Boolean);
   S.roster=[...new Set(document.getElementById('sRoster').value.split('\n').map(x=>x.trim()).filter(Boolean))];
   const sl=document.getElementById('sSlots').value.split(/[,，、\s]+/).filter(Boolean).map(Number);
