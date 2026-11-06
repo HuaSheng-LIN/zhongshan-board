@@ -35,7 +35,12 @@ header{display:flex;align-items:center;gap:20px;background:linear-gradient(90deg
 
 main{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:12px;min-height:0}
 .lft{display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0}
-.ltop{display:grid;grid-template-columns:1.5fr 1fr;gap:12px}
+.ltop{flex:1;min-height:0;display:grid;grid-template-columns:1.5fr 1fr;gap:12px}
+.ltop>.panel{min-height:0;overflow:hidden}
+.rgt{display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0}
+.rgt>#pDuty{flex:1 1 0;min-height:0}
+html.tv .rgt>#pTab{flex:1 1 0;min-height:0;overflow:hidden}
+html.tv .rgt>#pDuty{overflow:hidden}
 #pDuty{min-height:0;min-width:0}
 .col2{display:flex;flex-direction:column;min-height:0}
 .col{display:flex;flex-direction:column;gap:12px;min-height:0}
@@ -222,7 +227,15 @@ html.tv .nd .v{font-size:30px}
 html.tv .now{grid-template-columns:repeat(3,1fr)}
 html.tv .car .n{font-size:30px}
 html.tv .car .s{font-size:21px}
-html.tv #pTab .tr{grid-template-columns:36% 1fr}
+html.tv #pTab .tr{grid-template-columns:34% 1fr}
+html.tv #pTab .tr .p .pc{font-size:21px}
+html.tv #pTab .tr .r{font-size:18px}
+html.tv #pTab .tg .gn{font-size:23px;width:auto}
+html.tv #pTab .tg{grid-template-columns:52px 1fr}
+html.tv #pTab .tr .p .cd{font-size:14px}
+html.tv #pDuty table.duty td.nm .pc{font-size:19px}
+html.tv #pDuty table.duty td.t{font-size:20px}
+html.tv #pDuty table.duty th{font-size:18px}
 html.tv #pTab .tnote{font-size:14px;line-height:1.45}
 html.tv #unit{pointer-events:none;user-select:none}
 html.tv *{user-select:none;caret-color:transparent}
@@ -333,7 +346,7 @@ table.dyn th{background:var(--panel2);width:140px}
 html.tv #dynStat{display:none}
 /* 出勤中列表與返隊 */
 #active{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
-.actv{display:flex;align-items:center;gap:8px;background:#3a1a22;border:1px solid #e5383b88;border-radius:8px;padding:6px 10px;font-size:17px;animation:blink 1.6s infinite}
+.actv{display:flex;align-items:center;gap:8px;background:#3a1a22;border:1px solid #e5383b88;border-radius:8px;padding:6px 10px;font-size:17px}
 .actv b{font-size:18px} .actv .tm{color:#ffb3b3;font-size:14px;font-variant-numeric:tabular-nums;margin-left:8px}
 .actv .rb{margin-left:auto;display:flex;gap:6px}
 .actv .rb button{font-family:inherit;font-size:15px;font-weight:700;padding:5px 12px;border-radius:7px;border:1px solid #2ec27e;background:#123a2a;color:#d6ffe9;cursor:pointer;white-space:nowrap}
@@ -347,6 +360,37 @@ html.tv #dynStat{display:none!important}
 #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1e2d4d;border:1px solid #4a6aa6;color:#fff;border-radius:10px;padding:10px 16px;font-size:17px;display:none;gap:12px;align-items:center;z-index:50;box-shadow:0 6px 20px #000a}
 #toast button{font-family:inherit;font-size:15px;padding:4px 12px;border-radius:6px;border:1px solid #ffd166;background:#3a3010;color:#ffe9a8;cursor:pointer}
 html.tv #toast{display:none!important}
+/* 救護出勤／出動 大按鈕 */
+.bigbtn{display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:19px;font-weight:800;padding:5px 14px;border-radius:8px;border:none;color:#fff;cursor:pointer;box-shadow:0 1px 3px #0009;white-space:nowrap}
+.bigbtn.ems{background:linear-gradient(180deg,#2f86f0,#1e6fd9)}
+.bigbtn.ems:hover{background:#3a92ff}
+.bigbtn.fire{background:linear-gradient(180deg,#ef4b4e,#d62828)}
+.bigbtn.fire:hover{background:#ff5a5d}
+.bigbtn .ico{width:1.5em;height:1em}
+html.tv .bigbtn{display:none}
+/* 出勤中提示：救護藍、火警與其他紅 */
+@keyframes blinkR{50%{background:#7a1418;box-shadow:0 0 14px #ff3b3b99}}
+@keyframes blinkB{50%{background:#14408a;box-shadow:0 0 14px #3b8bffaa}}
+.actv.fire{animation:blinkR 1.1s infinite}
+.actv.ems{background:#10284d;border-color:#4ea8de;animation:blinkB 1.1s infinite}
+html.tv .actv{font-size:22px;padding:8px 14px}
+html.tv .actv b{font-size:24px}
+html.tv .actv .tm{font-size:18px}
+/* 車輛卡片：水箱車出勤閃紅、救護車出勤閃藍，其他車輛不閃 */
+@keyframes carR{50%{box-shadow:inset 0 0 0 999px #e5383b66}}
+@keyframes carB{50%{box-shadow:inset 0 0 0 999px #2f7fff66}}
+.car.st-出勤中{animation:none}
+.car.st-出勤中.t-fire{animation:carR 1.2s infinite}
+.car.st-出勤中.t-ems{border-color:#3b8bff;animation:carB 1.2s infinite}
+.car.st-出勤中.t-ems .s{color:#8ec5ff}
+/* 車輛動態填滿左側高度：卡片與插圖跟著放大 */
+#pCars{display:flex;flex-direction:column}
+#cars{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}
+#cars .vgroup{flex:1 1 auto;margin-bottom:0;min-height:0}
+#cars .cars{height:100%}
+#cars .car{height:100%;display:flex;flex-direction:column}
+#cars .car.art{background-size:100% 100%,auto min(62%,118px);background-position:0 0,right 4px top 8px}
+#cars .car .crew{margin-top:auto}
 </style>
 </head>
 <body>
@@ -378,8 +422,8 @@ html.tv #toast{display:none!important}
   <div class="lft">
     <div class="ltop">
       <section id="pCars" class="panel">
-        <h2><span class="bar"></span>車輛動態 <span class="hint">（點車輛切換狀態）</span>
-          <span class="acts"><button class="act pri" onclick="quickEms()" title="一鍵派出在隊救護車（91 優先）">🚑 救護出勤</button><button class="act pri" onclick="openDispatch()">🚨 出動</button><button class="act" onclick="openDyn()" title="把中山分隊的人車動態寫入派遣科動態表">⇪ 同步動態表</button></span></h2>
+        <h2 title="點車輛可切換狀態"><span class="bar"></span>車輛動態
+          <span class="acts"><button class="bigbtn ems" onclick="quickEms()" title="一鍵派出在隊救護車（91 優先）"><svg class="ico" viewBox="0 0 26 16" aria-hidden="true"><path d="M1 2h13v11H1z" fill="#fff"/><path d="M14 5h6l5 5v3H14z" fill="#fff"/><path d="M16 6.5h3.5l3 3H16z" fill="#1e6fd9"/><path d="M6.4 4.5h2.2v2.4h2.4v2.2H8.6v2.4H6.4V9.1H4V6.9h2.4z" fill="#e5383b"/><circle cx="6" cy="13.5" r="2.3" fill="#fff" stroke="#1e6fd9" stroke-width="1.2"/><circle cx="19.5" cy="13.5" r="2.3" fill="#fff" stroke="#1e6fd9" stroke-width="1.2"/></svg>救護出勤</button><button class="bigbtn fire" onclick="openDispatch()">🚨 出動</button><button class="act" onclick="openDyn()" title="把中山分隊的人車動態寫入派遣科動態表">⇪ 同步動態表</button></span></h2>
         <div id="dynStat"></div>
         <div id="active"></div>
         <div id="cars"></div>
@@ -392,9 +436,20 @@ html.tv #toast{display:none!important}
         <div class="hc2 tvin" id="hcIn"></div>
       </section>
     </div>
-    <section id="pTab" class="panel grow">
-      <h2><span class="tabs"><button id="tabTask" onclick="setTab('task')">🔥 火警任務編組</button><button id="tabLogs" onclick="setTab('logs')" style="display:none">📋 出勤紀錄</button><button id="tabNotes" onclick="setTab('notes')">📝 交接事項</button></span>
-        <span class="acts" id="actsLogs"><button class="act pri" onclick="openCase()">＋ 新增出勤</button></span></h2>
+  </div>
+  <div class="rgt">
+    <section id="pDuty" class="panel">
+      <h2><span class="tabs"><button id="tabDuty" onclick="setTab('duty')">📋 今日勤務表</button><button id="tabTask" onclick="setTab('task')">🔥 火警任務編組</button><button id="tabNotes" onclick="setTab('notes')">📝 交接事項</button><button id="tabLogs" onclick="setTab('logs')" style="display:none">出勤紀錄</button></span>
+        <span id="viewDay" class="hint"></span>
+        <span class="acts">
+          <button class="act" onclick="shiftView(-1)">◀ 前一天</button>
+          <button class="act" onclick="shiftView(0)">今天</button>
+          <button class="act" onclick="shiftView(1)">後一天 ▶</button>
+          <button class="act pri" onclick="openImport()">🔄 同步／讀取</button>
+        </span>
+        <span class="acts" id="actsLogs" style="display:none"><button class="act pri" onclick="openCase()">＋ 新增出勤</button></span></h2>
+      <div class="scroll grow" id="wrapDuty"><table class="duty" id="duty"></table></div>
+      <div class="hint" style="margin-top:6px" id="hintDuty">點儲存格可選擇人員（當日上班人員排在最前面），會自動儲存。<a href="#" onclick="clearTable();return false" style="color:var(--muted)">清空此日班表</a></div>
       <div class="scroll grow" id="wrapTask"><div id="task"></div></div>
       <div class="hint" style="margin-top:6px" id="hintTask"></div>
       <div class="grow col2" id="wrapLogs">
@@ -410,17 +465,6 @@ html.tv #toast{display:none!important}
       </div>
     </section>
   </div>
-  <section id="pDuty" class="panel">
-    <h2><span class="bar"></span>今日勤務表 <span id="viewDay" class="hint"></span>
-      <span class="acts">
-        <button class="act" onclick="shiftView(-1)">◀ 前一天</button>
-        <button class="act" onclick="shiftView(0)">今天</button>
-        <button class="act" onclick="shiftView(1)">後一天 ▶</button>
-        <button class="act pri" onclick="openImport()">🔄 同步／讀取</button>
-      </span></h2>
-    <div class="scroll grow" id="wrapDuty"><table class="duty" id="duty"></table></div>
-    <div class="hint" style="margin-top:6px" id="hintDuty">點儲存格可選擇人員（當日上班人員排在最前面），會自動儲存。<a href="#" onclick="clearTable();return false" style="color:var(--muted)">清空此日班表</a></div>
-  </section>
   <div id="now" hidden></div>
   <div id="toast"></div>
 </main>
@@ -656,7 +700,7 @@ const defaults={
   tvReload:0,        // 遠端要求電視重新整理的時間
   syncAt:0,
   leaderOv:{},
-  tab:'task',
+  tab:'duty',
   taskTpl:[
     {g:'11車',roles:['指揮官','駕駛','聯絡員','瞄子手（清潔2樓備勤室）','瞄子手（清潔2樓備勤室）']},
     {g:'91車',roles:['駕駛','救護員']},
@@ -680,6 +724,8 @@ function migrate(s){
     s.vehicles.forEach(v=>{if(v.type==='救護車'&&v.crew==null){v.crew=v.name==='91'?'緊急救護':v.name==='92'?'二備救護':'';}});
     s.v10=1;
   }
+  // v21：右側分頁改版，預設顯示今日勤務表
+  if(!s.v21){s.tab='duty';s.v21=1;}
   // v20：車輛預設出勤人數
   s.vehicles.forEach(v=>{if(v.seats==null)v.seats=defSeats(v);});
   return s;
@@ -916,10 +962,10 @@ function clearTable(){const k=keyOf(viewDate());if(confirm(`確定清空 ${rocDa
 // ===== 分頁 =====
 function setTab(t){S.tab=t;save();showTab();}
 function showTab(){
-  const t=['task','notes'].includes(S.tab)?S.tab:'task';   // 出勤紀錄暫時隱藏
-  [['tabTask','task'],['tabLogs','logs'],['tabNotes','notes']].forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.className=t===v?'on':'';});
-  for(const [id,show] of [['wrapTask',t==='task'],['hintTask',t==='task'],['wrapLogs',t==='logs'],['actsLogs',t==='logs'],['wrapNotes',t==='notes']])
-    document.getElementById(id).style.display=show?'':'none';
+  const t=['duty','task','notes'].includes(S.tab)?S.tab:'duty';
+  [['tabDuty','duty'],['tabTask','task'],['tabNotes','notes']].forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.className=t===v?'on':'';});
+  for(const [id,show] of [['wrapDuty',t==='duty'],['hintDuty',t==='duty'],['wrapTask',t==='task'],['hintTask',t==='task'],['wrapNotes',t==='notes'],['wrapLogs',false]]){
+    const e=document.getElementById(id);if(e)e.style.display=show?'':'none';}
 }
 
 // ===== 火警任務編組 =====
@@ -1357,7 +1403,7 @@ function renderCars(){
   const now=Date.now(),types=[...new Set(S.vehicles.map(v=>v.type))];
   document.getElementById('cars').innerHTML=types.map(t=>`<div class="vgroup"><div class="vlabel">${esc(t)}</div><div class="cars" style="grid-template-columns:repeat(${Math.min(3,S.vehicles.filter(v=>v.type===t).length)},minmax(0,1fr))">`+
     S.vehicles.map((v,i)=>{const a=artOf(v);return v.type!==t?'':`
-      <div class="car st-${v.status} ${a?'art':''}" ${a?`style="--art:${VEH_URL[a].replace(/"/g,'&quot;')}"`:''} onclick="openCar(${i})">
+      <div class="car st-${v.status} ${a?'art':''} ${v.type==='水箱車'?'t-fire':v.type==='救護車'?'t-ems':''}" ${a?`style="--art:${VEH_URL[a].replace(/"/g,'&quot;')}"`:''} onclick="openCar(${i})">
         <div class="n">${esc(v.name)}${v.note?`<small>${esc(v.note)}</small>`:''}</div>
         <div class="s">${v.status}${(v.status==='出勤中'||v.status==='返隊中')&&v.case?`<small>${esc(v.case)}</small>`:''}</div>
         <div class="d">${v.status==='在隊'?'&nbsp;':'已 '+dur(now-v.since)}</div>${crewHtml(v)}</div>`;}).join('')+'</div></div>').join('');
@@ -1538,7 +1584,8 @@ function renderActive(){
     if(fire.length&&g.cars.length>fire.length)btn.push(`<button onclick="returnCars('${g.id}','fire')">${fire.map(v=>v.name).join('+')} 返隊</button>`);
     if(ems.length)btn.push(`<button onclick="returnCars('${g.id}','ems')">救護返隊</button>`);
     if(g.cars.length>1||!ems.length)btn.push(`<button class="all" onclick="returnCars('${g.id}','all')">${g.cars.length>1?'整組返隊':'返隊'}</button>`);
-    return `<div class="actv">${icon} <b>${esc(g.item)}</b>｜${g.cars.map(v=>esc(v.name)).join('+')}<span class="tm">${dur(now-g.since)}</span><span class="rb">${btn.join('')}</span></div>`;
+    const kind=g.item==='救護'||(!fire.length&&ems.length&&g.cars.length===ems.length&&g.item!=='火警')?'ems':'fire';
+    return `<div class="actv ${kind}">${icon} <b>${esc(g.item)}</b>｜${g.cars.map(v=>esc(v.name)).join('+')}<span class="tm">${dur(now-g.since)}</span><span class="rb">${btn.join('')}</span></div>`;
   }).join('');
 }
 let undoSnap=null,toastTimer=null;
@@ -1806,11 +1853,15 @@ livePull();setInterval(livePull,TV?15000:60000);
 if(TV){
   let seenReload=null;window.tvReloadCheck=()=>{if(seenReload===null)seenReload=S.tvReload;else if(S.tvReload!==seenReload)hardReload();};
   notesEl.readOnly=true;
-  // 電視：左下只顯示火警任務編組；隱藏出勤紀錄、交接事項與操作提示
+  // 電視：右邊上半今日勤務表、下半火警任務編組；隱藏交接事項與操作提示
   (()=>{
     const $=id=>document.getElementById(id);
-    S.tab='task';showTab();
-    $('pTab').querySelector('.tabs').outerHTML='<span class="bar"></span>🔥 火警任務編組';
+    S.tab='duty';showTab();
+    $('pDuty').querySelector('.tabs').outerHTML='<span class="bar"></span>今日勤務表';
+    const pTab=document.createElement('section');pTab.id='pTab';pTab.className='panel';
+    pTab.innerHTML='<h2><span class="bar"></span>🔥 火警任務編組</h2>';
+    const wt=$('wrapTask');pTab.appendChild(wt);wt.style.display='';
+    document.querySelector('.rgt').appendChild(pTab);
     ['wrapLogs','wrapNotes','actsLogs','hintTask','hintDuty'].forEach(id=>{const e=$(id);if(e)e.style.display='none';});
   })();
   window.showTab=()=>{};
