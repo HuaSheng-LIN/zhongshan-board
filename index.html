@@ -206,8 +206,8 @@ table.duty.sheet td{padding:3px 4px}
 .car .crew{margin-top:4px;padding-top:4px;border-top:1px dashed var(--line);font-size:19px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .car .crew .ck{display:table;font-size:11px;font-weight:400;color:var(--blue);background:#4ea8de22;border-radius:4px;padding:0 5px;margin-bottom:2px}
 /* 電視模式：固定 1920×1080 設計尺寸，依螢幕等比例縮放；只顯示、不能操作 */
-html.tv,html.tv body{overflow:hidden}
-html.tv body{width:1920px;height:1080px;transform-origin:0 0;box-sizing:border-box;margin:0}
+html.fit,html.fit body{overflow:hidden}
+html.fit body{transform-origin:0 0;box-sizing:border-box;margin:0}
 html.tv .hbtns,html.tv .acts,html.tv #hintDuty,html.tv #hintTask a,html.tv .panel h2 .hint{display:none!important}
 html.tv main,html.tv .leader,html.tv #sync{pointer-events:none}
 html.tv .del{display:none}
@@ -335,7 +335,7 @@ html.tv .car .crew.vcrew .pc{cursor:default}
       </section>
     </div>
     <section id="pTab" class="panel grow">
-      <h2><span class="tabs"><button id="tabTask" onclick="setTab('task')">🔥 火警任務編組</button><button id="tabLogs" onclick="setTab('logs')">📋 出勤紀錄</button><button id="tabNotes" onclick="setTab('notes')">📝 交接事項</button></span>
+      <h2><span class="tabs"><button id="tabTask" onclick="setTab('task')">🔥 火警任務編組</button><button id="tabLogs" onclick="setTab('logs')" style="display:none">📋 出勤紀錄</button><button id="tabNotes" onclick="setTab('notes')">📝 交接事項</button></span>
         <span class="acts" id="actsLogs"><button class="act pri" onclick="openCase()">＋ 新增出勤</button></span></h2>
       <div class="scroll grow" id="wrapTask"><div id="task"></div></div>
       <div class="hint" style="margin-top:6px" id="hintTask"></div>
@@ -446,6 +446,7 @@ html.tv .car .crew.vcrew .pc{cursor:default}
   <h3>⚙ 設定</h3>
   <label>輪休表 Google 試算表網址</label><input id="sUrl">
   <label>勤務表（火警任務編組表）Google 試算表網址</label><input id="sDutyUrl">
+  <label style="display:flex;gap:8px;align-items:center;color:var(--text)"><input id="sFit" type="checkbox" style="width:auto">這台電腦使用等比例縮放（建議開啟；版面依視窗大小自動縮放，不會被擠壓）</label>
   <label>即時同步網址（Google Apps Script，讓電視與值班台同步）</label><input id="sSync" placeholder="https://script.google.com/macros/s/……/exec">
   <label>同步寫入密碼（只有值班台需要填；電視不用填）</label><input id="sKey" type="password" autocomplete="off">
   <label>電視畫面（會透過即時同步套用到電視，約 15 秒內生效）</label>
@@ -818,7 +819,7 @@ function clearTable(){const k=keyOf(viewDate());if(confirm(`確定清空 ${rocDa
 // ===== 分頁 =====
 function setTab(t){S.tab=t;save();showTab();}
 function showTab(){
-  const t=['task','logs','notes'].includes(S.tab)?S.tab:'task';
+  const t=['task','notes'].includes(S.tab)?S.tab:'task';   // 出勤紀錄暫時隱藏
   [['tabTask','task'],['tabLogs','logs'],['tabNotes','notes']].forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.className=t===v?'on':'';});
   for(const [id,show] of [['wrapTask',t==='task'],['hintTask',t==='task'],['wrapLogs',t==='logs'],['actsLogs',t==='logs'],['wrapNotes',t==='notes']])
     document.getElementById(id).style.display=show?'':'none';
@@ -1406,6 +1407,7 @@ function openSettings(){
   document.getElementById('sRoster').value=S.roster.join('\n');
   document.getElementById('sUrl').value=S.sheetUrl||'';
   document.getElementById('sDutyUrl').value=S.dutyUrl||'';
+  document.getElementById('sFit').checked=S.pcFit!==false;
   document.getElementById('sSync').value=S.liveUrl||'';
   document.getElementById('sTvScale').value=S.tvScale||0;document.getElementById('sTvDebug').checked=!!S.tvDebug;
   document.getElementById('sKey').value=localStorage.getItem(KEY+'.key')||'';
@@ -1418,6 +1420,7 @@ function saveSettings(){
     const old=S.vehicles.find(v=>v.type===type&&v.name===name);
     return old?Object.assign(old,{note,crew}):V(type,name,note,crew);
   });
+  const nf=document.getElementById('sFit').checked;if(nf!==(S.pcFit!==false)){S.pcFit=nf;setTimeout(()=>location.reload(),300);}
   const nu=document.getElementById('sUrl').value.trim(),du=document.getElementById('sDutyUrl').value.trim(),urlChanged=nu!==S.sheetUrl||du!==S.dutyUrl;S.sheetUrl=nu;S.dutyUrl=du;
   const lu=document.getElementById('sSync').value.trim();if(lu!==S.liveUrl){S.liveUrl=lu;livePulled=false;setTimeout(livePull,200);}
   const nk=document.getElementById('sKey').value.trim(),keyChanged=nk!==(localStorage.getItem(KEY+'.key')||'');
@@ -1464,28 +1467,32 @@ notesEl.addEventListener('input',()=>{S.notes=notesEl.value;save();});
 window.addEventListener('storage',()=>{S=load();renderAll();});
 
 function renderAll(){showTab();renderLeader();renderHead();unitEl.textContent=S.unit;notesEl.value=S.notes;lastSlot=-1;lastKey='';tick();renderCars();}
-lastShared=sharedJson();
-renderAll();setInterval(tick,1000);syncShow(S.syncAt?'ok':'');syncOnline(false);
-livePull();setInterval(livePull,TV?15000:60000);
-if(TV){
-  // 縮放：依實際可視範圍等比例縮放 1920×1080 的畫面；網址可加 &scale=0.9 手動指定
+// ===== 等比例縮放（電視固定開啟；值班台可在設定關閉）=====
+const FIT=TV||S.pcFit!==false;
+if(FIT){
+  document.documentElement.classList.add('fit');
+  // 縮放：以 1080 高的設計尺寸，依視窗高度等比例縮放，寬度自動填滿；網址可加 &scale=0.9 手動指定
   const qs=new URLSearchParams(location.search),manual=parseFloat(qs.get('scale'));
   const fit=()=>{
     const vv=window.visualViewport;
     const w=Math.min(innerWidth,document.documentElement.clientWidth||innerWidth,vv?vv.width:innerWidth);
     const h=Math.min(innerHeight,document.documentElement.clientHeight||innerHeight,vv?vv.height:innerHeight);
-    const k=manual>0?manual:S.tvScale>0?S.tvScale:Math.min(w/1920,h/1080);
-    const b=document.body.style;b.transform=`scale(${k})`;
-    // 置中（左右或上下有多餘空間時）
-    b.marginLeft=Math.max(0,(w-1920*k)/2)+'px';b.marginTop=Math.max(0,(h-1080*k)/2)+'px';
-    const dbgOn=qs.has('debug')||S.tvDebug,old=document.getElementById('dbg');if(!dbgOn&&old)old.remove();
+    const k=manual>0?manual:(TV&&S.tvScale>0)?S.tvScale:Math.min(h/1080,w/1600);
+    const b=document.body.style;b.transform=`scale(${k})`;b.width=(w/k)+'px';b.height=(h/k)+'px';
+    const dbgOn=qs.has('debug')||(TV&&S.tvDebug),old=document.getElementById('dbg');if(!dbgOn&&old)old.remove();
     if(dbgOn){let d=document.getElementById('dbg');if(!d){d=document.createElement('div');d.id='dbg';
       d.style.cssText='position:fixed;left:0;top:0;z-index:99;background:#ff0;color:#000;font:24px monospace;padding:8px;white-space:pre';document.documentElement.appendChild(d);}
       d.textContent=`innerWidth×innerHeight = ${innerWidth}×${innerHeight}\nclient = ${document.documentElement.clientWidth}×${document.documentElement.clientHeight}\nvisualViewport = ${vv?Math.round(vv.width)+'×'+Math.round(vv.height):'無'}\nscreen = ${screen.width}×${screen.height}  DPR = ${devicePixelRatio}\nscale = ${k.toFixed(3)}\n${window.clockInfo||'時間校正：尚未取得'}\n${navigator.userAgent}`;}
   };
-  window.tvFit=fit;let seenReload=null;window.tvReloadCheck=()=>{if(seenReload===null)seenReload=S.tvReload;else if(S.tvReload!==seenReload)hardReload();};
+  window.tvFit=fit;
   fit();addEventListener('resize',fit);if(window.visualViewport)visualViewport.addEventListener('resize',fit);
-  setInterval(fit,5000);   // 有些電視瀏覽器載入後才改變大小
+  setInterval(fit,5000);   // 有些瀏覽器載入後才改變大小
+}
+lastShared=sharedJson();
+renderAll();setInterval(tick,1000);syncShow(S.syncAt?'ok':'');syncOnline(false);
+livePull();setInterval(livePull,TV?15000:60000);
+if(TV){
+  let seenReload=null;window.tvReloadCheck=()=>{if(seenReload===null)seenReload=S.tvReload;else if(S.tvReload!==seenReload)hardReload();};
   notesEl.readOnly=true;
   // 電視：左下只顯示火警任務編組；隱藏出勤紀錄、交接事項與操作提示
   (()=>{
