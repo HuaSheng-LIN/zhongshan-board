@@ -477,6 +477,10 @@ html.tv #pTab .tcol .tr .p .pc{font-size:19px;font-size:min(var(--fs,26px),64cqh
 html.tv #pTab .tcol .tr .r{font-size:15px;font-size:min(18px,46cqh)}
 html.tv #pTab .tcol .tr .r small{font-size:11px;font-size:min(12px,30cqh)}
 html.tv #pTab .tcol .tr .p .cd{font-size:12px;font-size:min(14px,40cqh)}
+/* ===== v1.22 出勤人員備註 ===== */
+.crewpick button.warn{background:#2a2216}
+.crewpick button.warn i{color:#ffb347;font-weight:700}
+.crewpick button i{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -647,7 +651,7 @@ html.tv #pTab .tcol .tr .p .cd{font-size:12px;font-size:min(14px,40cqh)}
 <!-- 出勤人員 -->
 <dialog id="dCrew" class="wide">
   <h3 id="crTitle"></h3>
-  <div class="hint" style="margin-bottom:8px">點選出勤的人員（可多選）；名冊為全隊人員，不限當日上班。<b style="color:#ffd166">非上班同仁不計入上班及在隊人數</b></div>
+  <div class="hint" style="margin-bottom:8px">點選出勤的人員（可多選）；名冊為全隊人員，不限當日上班。名字旁為目前時段勤務，<b style="color:#ffb347">⚠ 橘色</b>表示休息、救護、外出或已隨其他車出勤。<b style="color:#ffd166">非上班同仁不計入上班及在隊人數</b></div>
   <div class="crewpick" id="crList"></div>
   <div class="dbtns"><button style="margin-right:auto" onclick="crSel=[];crDraw()">清除</button><button onclick="dCrew.close()">取消</button><button class="ok" onclick="crSave()">確定</button></div>
 </dialog>
@@ -1718,9 +1722,21 @@ function crewRoster(){
 }
 function openCrew(car){crCar=car;crSel=[...(dp.crew[car]||[])];const v=carBy(car);
   document.getElementById('crTitle').textContent=`👤 ${car} ${v?v.type:''}｜出勤人員`;crDraw();dCrew.showModal();}
+// 出勤人員備註：目前時段的勤務；休息、緊急救護、外出、訓練、宣導或已隨其他車出勤者以橘色警示
+function crewNote(k,n){
+  const sc=S.sched[k],slot=sc&&sc.slots.length?sc.slots[curSlot(sc,new Date())]:null;
+  const busy=S.vehicles.filter(v=>v.name!==crCar&&(v.status==='出勤中'||v.status==='返隊中')&&(v.crewNames||[]).includes(n)).map(v=>v.name)
+    .concat(Object.keys(dp.crew||{}).filter(c=>c!==crCar&&(dp.crew[c]||[]).includes(n)));
+  if(busy.length)return {t:'已排 '+[...new Set(busy)].join('、')+' 出勤',w:1};
+  const d=dutyOfName(slot,n);
+  if(!d)return {t:'上班',w:0};
+  const away=d==='休息'||d==='緊急救護'||/外出|訓練|宣導/.test(d)||(S.awayCols||[]).includes(d);
+  return {t:d,w:away?1:0};
+}
 function crDraw(){
   const {k,on,list}=crewRoster();
-  const btn=n=>`<button class="${crSel.includes(n)?'on':''} ${on.has(n)?'':'off'}" onclick="crToggle('${esc(n).replace(/'/g,'')}')">${chip(k,n)}${on.has(n)?'<i>上班</i>':''}</button>`;
+  const btn=n=>{const x=on.has(n)?crewNote(k,n):null;
+    return `<button class="${crSel.includes(n)?'on':''} ${on.has(n)?'':'off'} ${x&&x.w?'warn':''}" onclick="crToggle('${esc(n).replace(/'/g,'')}')" ${x&&x.w?`title="${esc(x.t)}，可能不在隊上"`:''}>${chip(k,n)}${x?`<i>${x.w?'⚠ ':''}${esc(x.t)}</i>`:''}</button>`;};
   const a=list.filter(n=>on.has(n)),b=list.filter(n=>!on.has(n));
   document.getElementById('crList').innerHTML=(a.length?'<div class="grp">今日上班</div>'+a.map(btn).join(''):'')+(b.length?'<div class="grp">其他隊員</div>'+b.map(btn).join(''):'')||'<div class="hint">尚未讀取輪休表名冊</div>';
 }
