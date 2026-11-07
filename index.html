@@ -441,6 +441,12 @@ html:not(.tv) #task .tfree,html:not(.tv) #task .tempty{flex:none}
 .crewpick button.off{opacity:.55}
 .crewpick button i{font-style:normal;font-size:11px;color:var(--green);margin-left:auto}
 .crewpick .grp{grid-column:1/-1;font-size:13px;color:var(--muted);margin-top:4px}
+/* ===== v1.18 訓練：綠色恆亮（不閃） ===== */
+.actv.train{background:#123a2a;border-color:#2ec27e;animation:none}
+.actv.train .tm{color:#b8f5d6}
+.car.c-train,.car.st-出勤中.c-train{animation:none!important;border-color:#2ec27e;box-shadow:inset 0 0 0 999px #2ec27e2e}
+.car.c-train .s{color:#5ef0a6!important}
+.crew small.offd{font-size:11px;color:#ffd166;margin:0 4px 0 -2px}
 </style>
 </head>
 <body>
@@ -611,7 +617,7 @@ html:not(.tv) #task .tfree,html:not(.tv) #task .tempty{flex:none}
 <!-- 出勤人員 -->
 <dialog id="dCrew" class="wide">
   <h3 id="crTitle"></h3>
-  <div class="hint" style="margin-bottom:8px">點選出勤的人員（可多選）；名冊為全隊人員，不限當日上班</div>
+  <div class="hint" style="margin-bottom:8px">點選出勤的人員（可多選）；名冊為全隊人員，不限當日上班。<b style="color:#ffd166">非上班同仁不計入上班及在隊人數</b></div>
   <div class="crewpick" id="crList"></div>
   <div class="dbtns"><button style="margin-right:auto" onclick="crSel=[];crDraw()">清除</button><button onclick="dCrew.close()">取消</button><button class="ok" onclick="crSave()">確定</button></div>
 </dialog>
@@ -1415,6 +1421,12 @@ function crewOf(v,k,slot){
   const g=sc.groups.find(g=>g.g===v.name+'車'||g.g===v.name);
   return g?g.rows.map(x=>x.name).filter(Boolean):[];
 }
+// 車輛出勤人數：有點選出勤人員時，只計算今日有上班的人（非上班同仁不影響上班與在隊人數）
+function onDutySet(){const r=S.rot[dutyKey(new Date())];return new Set(r?r.on.map(p=>p.name):[]);}
+function crewCount(v,on){
+  if(v.crewNames&&v.crewNames.length){on=on||onDutySet();return v.crewNames.filter(n=>on.has(n)).length;}
+  return v.crewN!=null?v.crewN:(v.seats||0);
+}
 function inBase(k,r){
   const d=new Date(),sc=S.sched[k],slot=sc&&sc.slots.length?sc.slots[curSlot(sc,d)]:null;
   const out=new Map(),parts=[];   // 姓名 → 原因
@@ -1424,7 +1436,7 @@ function inBase(k,r){
   const onNames=new Set(r.on.map(p=>p.name));
   let n=0;out.forEach((_,nm)=>{if(onNames.has(nm))n++;});
   // 出勤車輛：依出動時填寫的人數（未填則用車輛預設人數）
-  S.vehicles.filter(v=>v.status==='出勤中'||v.status==='返隊中').forEach(v=>{const c=v.crewN!=null?v.crewN:(v.seats||0);if(c){n+=c;parts.push([v.name+' 出勤',c]);}});
+  S.vehicles.filter(v=>v.status==='出勤中'||v.status==='返隊中').forEach(v=>{const c=crewCount(v,onNames);if(c){n+=c;parts.push([v.name+' 出勤',c]);}});
   return {n:Math.max(0,r.n-n),parts,detail:[...out].map(([a,b])=>fmtNo(k,a)+'：'+b).join('\n')};
 }
 
@@ -1489,7 +1501,7 @@ function renderCars(){
   const now=Date.now(),types=[...new Set(S.vehicles.map(v=>v.type))];
   document.getElementById('cars').innerHTML=types.map(t=>`<div class="vgroup"><div class="vlabel">${esc(t)}</div><div class="cars" style="grid-template-columns:repeat(${Math.min(3,S.vehicles.filter(v=>v.type===t).length)},minmax(0,1fr))">`+
     S.vehicles.map((v,i)=>{const a=artOf(v);return v.type!==t?'':`
-      <div class="car st-${v.status} ${a?'art':''} ${v.type==='水箱車'?'t-fire':v.type==='救護車'?'t-ems':''}" ${a?`style="--art:${VEH_URL[a].replace(/"/g,'&quot;')}"`:''} onclick="openCar(${i})">
+      <div class="car st-${v.status} ${a?'art':''} ${v.type==='水箱車'?'t-fire':v.type==='救護車'?'t-ems':''} ${(v.status==='出勤中'||v.status==='返隊中')&&isTrain(v.case)?'c-train':''}" ${a?`style="--art:${VEH_URL[a].replace(/"/g,'&quot;')}"`:''} onclick="openCar(${i})">
         <div class="n">${esc(v.name)}${v.note?`<small>${esc(v.note)}</small>`:''}</div>
         <div class="s">${v.status}${(v.status==='出勤中'||v.status==='返隊中')&&v.case?`<small>${esc(v.case)}</small>`:''}</div>
         <div class="d">${v.status==='在隊'?'&nbsp;':'已 '+dur(now-v.since)}</div>${crewHtml(v)}</div>`;}).join('')+'</div></div>').join('');
@@ -1576,7 +1588,7 @@ function crewHtml(v){
 }
 function crewHtml0(v){
   if((v.status==='出勤中'||v.status==='返隊中')&&v.crewNames&&v.crewNames.length)
-    return `<div class="crew"><span class="ck">出勤人員</span>${v.crewNames.map(n=>chip(dutyKey(new Date()),n)).join('')}</div>`;
+    return `<div class="crew"><span class="ck">出勤人員</span>${(()=>{const on=onDutySet();return v.crewNames.map(n=>chip(dutyKey(new Date()),n)+(on.has(n)?'':'<small class="offd">非上班</small>')).join('');})()}</div>`;
   if(!v.crew)return '';
   const d=new Date(),sc=S.sched[dutyKey(d)];
   if(!sc||!sc.slots.length)return `<div class="crew"><span class="ck">${esc(v.crew)}</span>—</div>`;
@@ -1598,7 +1610,8 @@ function setCar(s){
 }
 
 // ===== 出動 =====
-const CASES=['火警','救護','破門','救助','其他'];
+const CASES=['火警','救護','破門','救助','訓練','其他'];
+const isTrain=c=>/訓練/.test(c||'');
 let dp={type:'火警',sel:{}};
 function carBy(n){return S.vehicles.find(v=>v.name===n);}
 function availCar(v){return v.status==='在隊';}
@@ -1665,7 +1678,7 @@ function crDraw(){
   document.getElementById('crList').innerHTML=(a.length?'<div class="grp">今日上班</div>'+a.map(btn).join(''):'')+(b.length?'<div class="grp">其他隊員</div>'+b.map(btn).join(''):'')||'<div class="hint">尚未讀取輪休表名冊</div>';
 }
 function crToggle(n){const i=crSel.indexOf(n);i>=0?crSel.splice(i,1):crSel.push(n);crDraw();}
-function crSave(){dp.crew[crCar]=[...crSel];if(crSel.length)dp.sel[crCar]=crSel.length;dCrew.close();drawDispatch();}
+function crSave(){dp.crew[crCar]=[...crSel];if(crSel.length){const on=onDutySet();dp.sel[crCar]=crSel.filter(n=>on.has(n)).length;}dCrew.close();drawDispatch();}
 function dpSum(){const c=Object.keys(dp.sel),n=c.reduce((a,k)=>a+dp.sel[k],0);
   document.getElementById('dpSum').innerHTML=c.length?`出動 <b>${c.join('＋')}</b>，共 <b>${n}</b> 人`:'尚未選擇車輛';}
 function saveDispatch(){
@@ -1687,12 +1700,12 @@ function renderActive(){
   const gs=outGroups(),now=Date.now();
   el.innerHTML=gs.map(g=>{
     const fire=g.cars.filter(v=>v.type==='水箱車'),ems=g.cars.filter(v=>v.type==='救護車');
-    const icon=g.item==='火警'?'🔥':g.item==='救護'?'🚑':'🚨';
+    const icon=g.item==='火警'?'🔥':g.item==='救護'?'🚑':isTrain(g.item)?'🏋️':'🚨';
     const btn=[];
     if(fire.length&&g.cars.length>fire.length)btn.push(`<button onclick="returnCars('${g.id}','fire')">${fire.map(v=>v.name).join('+')} 返隊</button>`);
     if(ems.length)btn.push(`<button onclick="returnCars('${g.id}','ems')">救護返隊</button>`);
     if(g.cars.length>1||!ems.length)btn.push(`<button class="all" onclick="returnCars('${g.id}','all')">${g.cars.length>1?'整組返隊':'返隊'}</button>`);
-    const kind=g.item==='救護'||(!fire.length&&ems.length&&g.cars.length===ems.length&&g.item!=='火警')?'ems':'fire';
+    const kind=isTrain(g.item)?'train':g.item==='救護'||(!fire.length&&ems.length&&g.cars.length===ems.length&&g.item!=='火警')?'ems':'fire';
     return `<div class="actv ${kind}">${icon} <b>${esc(g.item)}</b>｜${g.cars.map(v=>esc(v.name)).join('+')}<span class="tm">${dur(now-g.since)}</span><span class="rb">${btn.join('')}</span></div>`;
   }).join('');
 }
@@ -1766,7 +1779,7 @@ function dynPayload(){
   const stopped=dynCars.filter(v=>v.status==='保養'||v.status==='送修').map(v=>v.name);
   // 出勤中的車：同一次出動（grp）合併成一列
   const out=S.vehicles.filter(v=>v.status==='出勤中'||v.status==='返隊中');
-  const groups={};out.forEach(v=>{const g=v.grp||('c'+v.name);(groups[g]=groups[g]||{item:v.case||'出勤',cars:[],n:0}).cars.push(v.name);groups[g].n+=v.crewN!=null?v.crewN:(v.seats||0);});
+  const groups={};out.forEach(v=>{const g=v.grp||('c'+v.name);(groups[g]=groups[g]||{item:v.case||'出勤',cars:[],n:0}).cars.push(v.name);groups[g].n+=crewCount(v);});
   const gl=Object.values(groups);
   const pick=t=>{const g=gl.filter(x=>x.item===t);return g.length?{veh:g.flatMap(x=>x.cars).join('+'),n:g.reduce((a,x)=>a+x.n,0)}:null;};
   const fire=pick('火警'),ems=pick('救護');
