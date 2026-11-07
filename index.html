@@ -799,6 +799,7 @@ setInterval(keepAwake,60000);
 
 // ===== 網路斷線偵測 =====
 // 每 30 秒向看板網站送一個很小的請求；連續 2 次失敗（約 1 分鐘）就顯示提示列，恢復後自動消失並立即重新同步
+const NET_LOGIN='https://auth.hccg.gov.tw/HccgGovWeb/Logout.aspx';   // 分隊網路（員工編號）登入頁
 let netOkAt=Date.now(),netFail=0,netDown=false;
 async function netCheck(){
   if(!/^https?:/.test(location.protocol))return;
@@ -815,7 +816,9 @@ function netShow(){const el=document.getElementById('netBar');if(!el)return;
   if(!netDown){el.hidden=true;return;}
   const t=new Date(netOkAt),hm=pad(t.getHours())+':'+pad(t.getMinutes());
   const off=navigator.onLine===false;
-  el.innerHTML=`⚠ ${off?'網路線／Wi-Fi 已中斷':'網路已中斷，可能需要重新登入員工編號'}<small>（最後連線 ${hm}，畫面資料可能不是最新）</small><button onclick="netCheck()">重新檢查</button>`;
+  const msg=TV?'電視網路已中斷':off?'網路線／Wi-Fi 已中斷':'網路已中斷，可能需要重新登入員工編號';
+  el.innerHTML=`⚠ ${msg}<small>（最後連線 ${hm}，畫面資料可能不是最新）</small>`+
+    (TV?'':`${off?'':`<button onclick="window.open(NET_LOGIN,'_blank')">🔑 開啟登入頁</button>`}<button onclick="netCheck()">重新檢查</button>`);
   el.hidden=false;}
 window.addEventListener('offline',()=>{netFail=1;netCheck();});
 window.addEventListener('online',()=>netCheck());
