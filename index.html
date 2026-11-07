@@ -1092,14 +1092,14 @@ function showTab(){
 // ===== 火警任務編組 =====
 // 車組顏色：水箱車與勤務車紅色、救護車藍色、火警值班綠色
 const GCOL=[[/^1\d/,'#e06666'],[/^8\d/,'#e06666'],[/^9\d/,'#6fa8dc'],[/^值/,'#93c47d']];
-// 版面：左欄 11、15；右欄 91、92、85、86（其他車組接在後面）；火警值班放最下方橫跨兩欄
+// 版面：左欄 11、15；右欄 91、92、85、86（其他車組接在後面），火警值班放在右欄最下方
 const TORDER=['91','92','85','86'];
 function taskLayout(list){
   const L=[],R=[],B=[],no=g=>(String(g).match(/^\d+/)||[''])[0];
   list.forEach(x=>{const n=no(x.g);if(/^值/.test(x.g))B.push(x);else if(n==='11'||n==='15')L.push(x);else R.push(x);});
   L.sort((a,b)=>no(a.g)-no(b.g));
   const ri=x=>{const i=TORDER.indexOf(no(x.g));return i<0?99:i;};R.sort((a,b)=>ri(a)-ri(b));
-  return `<div class="tgrid${B.length?' hasbot':''}"><div class="tcol">${L.map(x=>x.h).join('')}</div><div class="tcol">${R.map(x=>x.h).join('')}</div>${B.length?`<div class="tbot">${B.map(x=>x.h).join('')}</div>`:''}</div>`;
+  return `<div class="tgrid"><div class="tcol">${L.map(x=>x.h).join('')}</div><div class="tcol">${R.concat(B).map(x=>x.h).join('')}</div></div>`;
 }
 const gColor=g=>(GCOL.find(([re])=>re.test(g))||[0,'#b4a7d6'])[1];
 function noOf(k,name){const r=S.rot[k];if(!r)return null;const p=r.on.find(x=>x.name===name);if(p)return p.no;
