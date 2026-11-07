@@ -456,6 +456,27 @@ html:not(.tv) #task .tfree,html:not(.tv) #task .tempty{flex:none}
 html.tv .car .n{font-size:60px}
 .car.t-moto .n,html.tv .car.t-moto .n{font-size:44px}
 .car .n small{font-size:15px;vertical-align:.9em}
+/* ===== v1.21 火警任務編組：火警值班放最下方橫跨兩欄 ===== */
+.tgrid.hasbot{grid-template-rows:minmax(0,1fr) auto}
+.tgrid .tbot{grid-column:1/-1;display:flex;flex-direction:column;gap:8px}
+.tgrid .tbot .tg,#task .tgrid .tbot .tg{flex:none!important;min-height:auto!important}
+#task .tgrid .tbot .tr{flex:none!important;min-height:auto!important}
+/* 電視：任務編組依面板高度平均分配列高 */
+html.tv #pTab{display:flex;flex-direction:column}
+html.tv #pTab #wrapTask{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+html.tv #pTab #task{flex:1;min-height:0;display:flex;flex-direction:column}
+html.tv #pTab .tfree{display:none}
+html.tv #pTab .tgrid{flex:1;min-height:0;align-items:stretch}
+html.tv #pTab .tcol{min-height:0}
+html.tv #pTab .tcol .tg{flex-basis:0;min-height:0}
+html.tv #pTab .tcol .tg>div:last-child{display:flex;flex-direction:column}
+html.tv #pTab .tcol .tr{flex:1 1 0;min-height:0}
+html.tv #pTab .tr .p,html.tv #pTab .tr .r{padding-top:0;padding-bottom:0}
+html.tv #pTab .tcol .tr{container-type:size}
+html.tv #pTab .tcol .tr .p .pc{font-size:19px;font-size:min(var(--fs,26px),64cqh)}
+html.tv #pTab .tcol .tr .r{font-size:15px;font-size:min(18px,46cqh)}
+html.tv #pTab .tcol .tr .r small{font-size:11px;font-size:min(12px,30cqh)}
+html.tv #pTab .tcol .tr .p .cd{font-size:12px;font-size:min(14px,40cqh)}
 </style>
 </head>
 <body>
@@ -1069,7 +1090,17 @@ function showTab(){
 }
 
 // ===== 火警任務編組 =====
-const GCOL=[[/^11/,'#e06666'],[/^9\d/,'#93c47d'],[/^1[2-9]/,'#f6b26b'],[/^8\d/,'#a4c2f4'],[/^值/,'#f6b26b']];
+// 車組顏色：水箱車與勤務車紅色、救護車藍色、火警值班綠色
+const GCOL=[[/^1\d/,'#e06666'],[/^8\d/,'#e06666'],[/^9\d/,'#6fa8dc'],[/^值/,'#93c47d']];
+// 版面：左欄 11、15；右欄 91、92、85、86（其他車組接在後面）；火警值班放最下方橫跨兩欄
+const TORDER=['91','92','85','86'];
+function taskLayout(list){
+  const L=[],R=[],B=[],no=g=>(String(g).match(/^\d+/)||[''])[0];
+  list.forEach(x=>{const n=no(x.g);if(/^值/.test(x.g))B.push(x);else if(n==='11'||n==='15')L.push(x);else R.push(x);});
+  L.sort((a,b)=>no(a.g)-no(b.g));
+  const ri=x=>{const i=TORDER.indexOf(no(x.g));return i<0?99:i;};R.sort((a,b)=>ri(a)-ri(b));
+  return `<div class="tgrid${B.length?' hasbot':''}"><div class="tcol">${L.map(x=>x.h).join('')}</div><div class="tcol">${R.map(x=>x.h).join('')}</div>${B.length?`<div class="tbot">${B.map(x=>x.h).join('')}</div>`:''}</div>`;
+}
 const gColor=g=>(GCOL.find(([re])=>re.test(g))||[0,'#b4a7d6'])[1];
 function noOf(k,name){const r=S.rot[k];if(!r)return null;const p=r.on.find(x=>x.name===name);if(p)return p.no;
   const e=Object.entries(r.names||{}).find(([,n])=>n===name);return e?+e[0]:null;}
@@ -1088,7 +1119,7 @@ function renderTaskSheet(k,sc){
       const cd=r.name?dutyOfName(slot,r.name):'';
       const cls=cd==='休息'?'rest':/外出|訓練|宣導/.test(cd)?'out':'';
       return `<div class="tr"><div class="r">${roleHtml(r.role)}</div><div class="p ${r.name?'':'empty'}">${r.name?chip(k,r.name):'—'}${cd?`<span class="cd ${cls}" title="目前時段勤務">${esc(cd)}</span>`:''}</div></div>`;}).join('');
-    return {h:`<div class="tg" style="--gc:${gColor(g.g)};flex-grow:${(g.rows||g.roles).length}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:g.rows.length+1};
+    return {h:`<div class="tg" style="--gc:${gColor(g.g)};flex-grow:${(g.rows||g.roles).length}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:g.rows.length+1,g:g.g};
   });
   const tot=groups.reduce((a,x)=>a+x.n,0),cols=[[],[]];let acc=0;
   groups.forEach(x=>{const c=(acc<tot/2&&acc+x.n/2<=tot/2+1)?0:1;if(c===0)acc+=x.n;else acc=1e9;cols[c].push(x.h);});
@@ -1096,7 +1127,7 @@ function renderTaskSheet(k,sc){
   const r=S.rot[k],inG=new Set(sc.groups.flatMap(g=>g.rows.map(x=>stripNo(x.name)).filter(Boolean)));
   const free=r?[...r.on].sort((a,b)=>a.no-b.no).filter(p=>!inG.has(p.name)).map(p=>esc(pad(p.no)+' '+p.name)):[];
   document.getElementById('task').innerHTML=
-    `<div class="tgrid">${cols.map(c=>`<div class="tcol">${c.join('')}</div>`).join('')}</div>`+
+    taskLayout(groups)+
     (empty.length?`<div class="tempty">未編組車輛：${empty.map(g=>esc(g.g)).join('、')}</div>`:'')+
     (r?`<div class="tfree">${free.length?`輪休表上班但未編組：<b>${free.join('、')}</b>`:'✔ 當日上班人員都已編組'}</div>`:'')+
     (sc.note?`<div class="tnote left">${esc(sc.note)}</div>`:'');
@@ -1110,10 +1141,10 @@ function renderTask(){
   const groups=S.taskTpl.map((g,gi)=>{
     const rows=g.roles.map((r,i)=>{const n=t.a[g.g+'#'+i];
       return `<div class="tr"><div class="r">${roleHtml(r)}</div><div class="p ${n?'':'empty'}" onclick="openTask(${gi},${i})">${n?chip(k,n):'點此選人'}</div></div>`;}).join('');
-    return {h:`<div class="tg" style="--gc:${gColor(g.g)};flex-grow:${(g.rows||g.roles).length}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:g.roles.length+1};
+    return {h:`<div class="tg" style="--gc:${gColor(g.g)};flex-grow:${(g.rows||g.roles).length}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:g.roles.length+1,g:g.g};
   });
   groups.push({h:`<div class="tg" style="--gc:#f1c232;flex-grow:3"><div class="gn" style="font-size:15px;line-height:1.1">休<br>息<br>或<br>外<br>出</div>
-    <div class="tout" onclick="openTask(-1)">${(t.out||[]).length?t.out.map(n=>`<span>${esc(fmtP(k,n))}</span>`).join(''):'<span class="hint" style="background:none">點此選擇休息或外出人員</span>'}</div></div>`,n:4});
+    <div class="tout" onclick="openTask(-1)">${(t.out||[]).length?t.out.map(n=>`<span>${esc(fmtP(k,n))}</span>`).join(''):'<span class="hint" style="background:none">點此選擇休息或外出人員</span>'}</div></div>`,n:4,g:'休息'});
   // 分兩欄：依序放到較短的那一欄
   // 依順序分兩欄：左欄放到約一半高度，其餘放右欄
   const tot=groups.reduce((a,x)=>a+x.n,0),cols=[[],[]];let acc=0;
@@ -1122,7 +1153,7 @@ function renderTask(){
   const r=S.rot[k],am=assignMap(k);
   const free=r?[...r.on].sort((a,b)=>a.no-b.no).filter(p=>!am[p.name]).map(p=>esc(pad(p.no)+' '+p.name)+(p.out?'(外宿)':'')):[];
   document.getElementById('task').innerHTML=
-    `<div class="tgrid">${cols.map(c=>`<div class="tcol">${c.join('')}</div>`).join('')}</div>`+
+    taskLayout(groups)+
     (r?`<div class="tfree">${free.length?`尚未編組：<b>${free.join('、')}</b>`:'✔ 當日上班人員都已編組'}</div>`:'')+
     (S.taskNote?`<div class="tnote">${esc(S.taskNote)}</div>`:'')+
     (S.taskMemo?`<div class="tmemo"><b>備註</b><div>${esc(S.taskMemo)}</div></div>`:'');
