@@ -242,6 +242,17 @@ html.tv *{user-select:none;caret-color:transparent}
 html.tv #notes{resize:none;border-color:transparent}
 #live{font-size:12px;color:var(--muted);margin-top:4px;text-align:right;white-space:nowrap}
 #live.ok{color:var(--green)} #live.err{color:#ff6b6e}
+#wake{font-size:12px;margin-top:2px;text-align:right;white-space:nowrap;color:var(--muted)}
+#wake.on{color:var(--green)} #wake.off{color:#ffb347;cursor:pointer}
+html.tv #wake{display:none}
+/* 斷線提示列 */
+#netBar{position:fixed;left:0;right:0;top:0;z-index:9999;display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 18px;
+  background:linear-gradient(90deg,#b3261e,#e8590c);color:#fff;font-size:26px;font-weight:800;box-shadow:0 4px 18px #000a;animation:netBlink 1.4s infinite}
+#netBar[hidden]{display:none}
+#netBar small{font-size:17px;font-weight:600;opacity:.95}
+#netBar button{font-family:inherit;font-size:17px;font-weight:700;padding:6px 14px;border-radius:8px;border:2px solid #fff;background:#0003;color:#fff;cursor:pointer}
+html.tv #netBar button{display:none}
+@keyframes netBlink{50%{filter:brightness(1.25)}}
 .nw{white-space:nowrap}
 /* 在隊人數 */
 .hc2{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
@@ -504,6 +515,7 @@ html.tv #pTab .tcol .tr .p .cd{font-size:12px;font-size:min(14px,40cqh)}
     <div id="time">--:--:--</div>
     <div id="date"></div>
     <div id="live"></div>
+    <div id="wake"></div>
   </div>
   <div class="hbtns">
     <button onclick="toggleFull()">⛶ 全螢幕</button>
@@ -561,6 +573,7 @@ html.tv #pTab .tcol .tr .p .cd{font-size:12px;font-size:min(14px,40cqh)}
   </div>
   <div id="now" hidden></div>
   <div id="toast"></div>
+  <div id="netBar" hidden></div>
 </main>
 
 <!-- 新增出勤 -->
@@ -760,6 +773,53 @@ async function syncClock(){
   }catch(e){}
 }
 syncClock();setInterval(syncClock,30*60000);
+
+// ===== 防止螢幕保護（Screen Wake Lock）=====
+// 看板在前景時向瀏覽器申請保持螢幕開啟，避免進入螢幕保護而被網路登出；切到別的視窗或縮小後會自動失效，回來時再申請
+let wakeLock=null,wakeMsg='';
+async function keepAwake(){
+  if(typeof TV!=='undefined'&&TV)return;
+  const el=document.getElementById('wake');
+  if(!('wakeLock' in navigator)){wakeMsg='此瀏覽器不支援';}
+  else if(!window.isSecureContext){wakeMsg='需使用 https 網址開啟';}
+  else if(document.visibilityState!=='visible'){wakeMsg='看板不在前景';}
+  else if(!wakeLock){
+    try{wakeLock=await navigator.wakeLock.request('screen');wakeMsg='';
+      wakeLock.addEventListener('release',()=>{wakeLock=null;wakeShow();});}
+    catch(e){wakeLock=null;wakeMsg=(e&&e.message)||'瀏覽器拒絕';}
+  }
+  wakeShow();
+}
+function wakeShow(){const el=document.getElementById('wake');if(!el)return;
+  if(wakeLock){el.className='on';el.textContent='🔆 防螢幕保護：啟用';el.title='看板在前景時不會進入螢幕保護';}
+  else{el.className='off';el.textContent='⚠ 防螢幕保護未啟用';el.title=(wakeMsg||'')+'（點一下重試）';el.onclick=keepAwake;}}
+document.addEventListener('visibilitychange',keepAwake);
+document.addEventListener('click',()=>{if(!wakeLock)keepAwake();},true);
+setInterval(keepAwake,60000);
+
+// ===== 網路斷線偵測 =====
+// 每 30 秒向看板網站送一個很小的請求；連續 2 次失敗（約 1 分鐘）就顯示提示列，恢復後自動消失並立即重新同步
+let netOkAt=Date.now(),netFail=0,netDown=false;
+async function netCheck(){
+  if(!/^https?:/.test(location.protocol))return;
+  let ok=false;
+  try{const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),8000);
+    const r=await fetch(location.pathname+'?ping='+_Date.now(),{method:'HEAD',cache:'no-store',signal:ac.signal});
+    clearTimeout(tm);ok=r.ok||r.status===304;}catch(e){ok=false;}
+  if(ok){netOkAt=Date.now();netFail=0;if(netDown){netDown=false;netShow();
+      try{toast('✔ 網路已恢復，重新同步中…');const b=document.querySelector('#toast button');if(b)b.style.display='none';}catch(e){}
+      try{syncOnline(false);}catch(e){} try{livePull();}catch(e){} try{syncClock();}catch(e){}}}
+  else{netFail++;if(netFail>=2&&!netDown){netDown=true;netShow();}else if(netDown)netShow();}
+}
+function netShow(){const el=document.getElementById('netBar');if(!el)return;
+  if(!netDown){el.hidden=true;return;}
+  const t=new Date(netOkAt),hm=pad(t.getHours())+':'+pad(t.getMinutes());
+  const off=navigator.onLine===false;
+  el.innerHTML=`⚠ ${off?'網路線／Wi-Fi 已中斷':'網路已中斷，可能需要重新登入員工編號'}<small>（最後連線 ${hm}，畫面資料可能不是最新）</small><button onclick="netCheck()">重新檢查</button>`;
+  el.hidden=false;}
+window.addEventListener('offline',()=>{netFail=1;netCheck();});
+window.addEventListener('online',()=>netCheck());
+setInterval(netCheck,30000);
 const LIVE_URL='https://script.google.com/macros/s/AKfycby2hOW3QFGmh5cix-1jeBkwVl7UrBJ2LRNswfnQlyxLHS_ry-sDt7YQDftfukHwzWVv/exec';   // 即時同步（Apps Script）網址
 if(!window.structuredClone)window.structuredClone=o=>JSON.parse(JSON.stringify(o));
 const TV=/[?&]tv=1/.test(location.search);
@@ -2057,7 +2117,7 @@ if(FIT){
   setInterval(fit,5000);   // 有些瀏覽器載入後才改變大小
 }
 lastShared=sharedJson();
-renderAll();dynShow();setTimeout(autoFitAll,600);if(document.fonts)document.fonts.ready.then(()=>autoFitAll());setInterval(tick,1000);syncShow(S.syncAt?'ok':'');syncOnline(false);
+renderAll();dynShow();setTimeout(autoFitAll,600);if(document.fonts)document.fonts.ready.then(()=>autoFitAll());setInterval(tick,1000);syncShow(S.syncAt?'ok':'');syncOnline(false);if(!TV)keepAwake();
 livePull();setInterval(livePull,TV?15000:60000);
 if(TV){
   let seenReload=null;window.tvReloadCheck=()=>{if(seenReload===null)seenReload=S.tvReload;else if(S.tvReload!==seenReload)hardReload();};
