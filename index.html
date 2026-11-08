@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="5be7ca1813be">
+<meta name="build" content="429f658cfaaf">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -511,7 +511,7 @@ html.tv #updBar{display:none}
   <div class="logo">🚒</div>
   <div>
     <div id="unit" contenteditable="true" spellcheck="false" title="點擊可修改分隊名稱"></div>
-    <div class="hint">消防勤務看板 · 值班台</div>
+    <div class="hint" id="appSub">消防勤務看板 · 值班台</div>
   </div>
   <div class="leader" onclick="openLeader()" title="點擊可手動指定帶隊官">
     <div class="k">今日帶隊官</div>
@@ -823,6 +823,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
+const APP_VER='v1.28';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -2271,6 +2272,9 @@ if(FIT){
 }
 lastShared=sharedJson();
 renderAll();dynShow();setTimeout(autoFitAll,600);if(document.fonts)document.fonts.ready.then(()=>autoFitAll());setInterval(tick,1000);syncShow(S.syncAt?'ok':'');syncOnline(false);if(!TV)keepAwake();
+// 頁面名稱與版本號（顯示在左上角分隊名稱下方）
+if(TV)document.title='中山分隊 勤務看板（電視版）';
+(()=>{const e=document.getElementById('appSub');if(e){e.textContent=`消防勤務看板 · ${TV?'電視版（唯讀）':'值班台'} · ${APP_VER}`;e.title='版本 '+APP_VER+(BUILD&&BUILD!=='__BUILD__'?'（'+BUILD+'）':'');}})();
 if(STAGE){document.title='【測試】'+document.title;const r=document.createElement('div');r.className='stageRibbon';r.textContent='🧪 測試環境（不影響正式看板與派遣表）';document.body.appendChild(r);}
 livePull();setInterval(livePull,TV?15000:60000);
 if(!TV){setInterval(()=>dynAuto(),30000);setInterval(dynRead,180000);setTimeout(dynRead,15000);
