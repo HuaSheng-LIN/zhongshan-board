@@ -495,6 +495,8 @@ html.tv #pTab .tcol .tr .p .cd{font-size:12px;font-size:min(14px,40cqh)}
 .crewpick button.warn{background:#2a2216}
 .crewpick button.warn i{color:#ffb347;font-weight:700}
 .crewpick button i{white-space:nowrap}
+/* ===== v1.26 測試環境標示 ===== */
+.stageRibbon{position:fixed;left:0;bottom:0;z-index:9998;background:#e8590c;color:#fff;font-weight:800;padding:5px 14px;border-top-right-radius:10px;font-size:16px;box-shadow:0 0 10px #000a;pointer-events:none}
 </style>
 </head>
 <body>
@@ -681,6 +683,14 @@ html.tv #pTab .tcol .tr .p .cd{font-size:12px;font-size:min(14px,40cqh)}
   <div class="dbtns"><button onclick="dDyn.close()">取消</button><button class="ok" id="dynOk" onclick="writeDyn()">寫入動態表</button></div>
 </dialog>
 
+<!-- 動態表與看板不同 -->
+<dialog id="dDynDiff" class="wide">
+  <h3>⚠ 動態表與看板不同</h3>
+  <div class="hint" style="font-size:14px;margin-bottom:8px">有人直接修改了派遣科動態表的中山區塊。請確認哪一邊才是現在的實際狀況。</div>
+  <div id="ddBody"></div>
+  <div class="dbtns"><button style="margin-right:auto" onclick="dDynDiff.close()">先不處理</button><button onclick="dDynDiff.close();openDyn()">以看板為準（覆蓋動態表）</button><button class="ok" id="ddAdopt" onclick="adoptDyn()">以動態表為準（更新看板）</button></div>
+</dialog>
+
 <!-- 設定 -->
 <dialog id="dSet">
   <h3>⚙ 設定</h3>
@@ -747,7 +757,12 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
 </script>
 <script>
-const KEY='zhongshanDutyBoard.v3';
+// 測試環境：網址在 /staging/ 底下時，使用獨立的本機資料、測試中繼站與測試動態表，不會碰到正式系統
+const STAGE=/\/staging(\/|$)/.test(location.pathname);
+const KEY=STAGE?'zhongshanDutyBoard.stage':'zhongshanDutyBoard.v3';
+const PROD_DYN_ID='18StcvFYkqQVOzF-1KEAJM0jHAyxQb8zdQTw2PnU-qwA';   // 正式派遣科動態表
+const TEST_DYN_URL='https://docs.google.com/spreadsheets/d/1CTQjXF9hLONXm9rTj2_lVDPZJ7hsoGKAcEd0uhXOBBs/edit';   // 測試用動態表（合成資料）
+const STAGE_LIVE_URL='https://script.google.com/macros/s/AKfycbw06_EL5AseXPVMkIMSp7Rst83Hl2221v-NwPY4TwpmlywoOaAw2NFdRh2nURJlnFdn9g/exec';   // 測試中繼站網址（部署後填入，或在測試環境的「設定」填寫）
 // ===== 標準時間（台北 UTC+8）=====
 // 向網站伺服器取得標準時間，並換算成台北時間；裝置時鐘或時區設錯也能正確顯示
 const _Date=Date;
@@ -823,7 +838,15 @@ function netShow(){const el=document.getElementById('netBar');if(!el)return;
 window.addEventListener('offline',()=>{netFail=1;netCheck();});
 window.addEventListener('online',()=>netCheck());
 setInterval(netCheck,30000);
-const LIVE_URL='https://script.google.com/macros/s/AKfycby2hOW3QFGmh5cix-1jeBkwVl7UrBJ2LRNswfnQlyxLHS_ry-sDt7YQDftfukHwzWVv/exec';   // 即時同步（Apps Script）網址
+const PROD_LIVE_URL='https://script.google.com/macros/s/AKfycby2hOW3QFGmh5cix-1jeBkwVl7UrBJ2LRNswfnQlyxLHS_ry-sDt7YQDftfukHwzWVv/exec';   // 正式即時同步（Apps Script）網址
+const LIVE_URL=STAGE?STAGE_LIVE_URL:PROD_LIVE_URL;
+// 測試環境的保護：不可連正式中繼站、不可寫正式動態表
+function stageBlocked(url,id){
+  if(!STAGE)return '';
+  if(url&&url.split('?')[0]===PROD_LIVE_URL)return '測試環境不可連線正式中繼站';
+  if(id&&id===PROD_DYN_ID)return '測試環境不可存取正式動態表';
+  return '';
+}
 if(!window.structuredClone)window.structuredClone=o=>JSON.parse(JSON.stringify(o));
 const TV=/[?&]tv=1/.test(location.search);
 if(TV)document.documentElement.classList.add('tv');
@@ -853,7 +876,7 @@ const defaults={
   vol:{},            // 志工協勤 { '2026-11-6': ['王○○'] }
   awayCols:['休息','外出勤務','宣導'],  // 算在隊人數時要扣掉的勤務
   lowStaff:3,        // 在隊人數 ≤ 此值時警示
-  dynUrl:'https://docs.google.com/spreadsheets/d/18StcvFYkqQVOzF-1KEAJM0jHAyxQb8zdQTw2PnU-qwA/edit',  // 派遣科動態表
+  dynUrl:STAGE?TEST_DYN_URL:'https://docs.google.com/spreadsheets/d/18StcvFYkqQVOzF-1KEAJM0jHAyxQb8zdQTw2PnU-qwA/edit',  // 派遣科動態表（測試環境用測試表）
   dynFire:'11',      // 動態表「火警」列平常的出動車輛
   dynEms:'91',       // 動態表「救護」列平常的出動車輛
   dynAt:0,
@@ -930,6 +953,7 @@ function liveGet(){
   });
 }
 async function livePull(){
+  if(stageBlocked(S.liveUrl)){liveShow('err',stageBlocked(S.liveUrl));return;}
   if(!S.liveUrl)return;
   try{
     const r=await liveGet();
@@ -950,6 +974,7 @@ async function livePull(){
 function livePushSoon(){if(TV||!S.liveUrl||!livePulled)return;clearTimeout(pushTimer);pushTimer=setTimeout(livePush,1500);}
 async function livePush(){
   const key=localStorage.getItem(KEY+'.key')||'';if(!key||!S.liveUrl)return;
+  if(stageBlocked(S.liveUrl)){liveShow('err',stageBlocked(S.liveUrl));return;}
   const o={};SHARED.forEach(k=>o[k]=S[k]);
   try{
     // 用 text/plain + no-cors，避免瀏覽器跨網站限制；結果由下一次讀取確認
@@ -1057,7 +1082,7 @@ function tick(){
   document.getElementById('date').textContent=`民國 ${d.getFullYear()-1911} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日（${WD[d.getDay()]}）`;
   const k=dutyKey(d),sc=S.sched[k],si=sc?'s'+curSlot(sc,d):slotIndex(d);
   if(si!==lastSlot||k!==lastKey){if(k!==lastKey){viewOff=0;}lastSlot=si;lastKey=k;renderDuty();renderNow();renderCars();renderLogs();renderStats();renderHead();}
-  if(d.getSeconds()%30===0){renderCars();dynAuto();}
+  if(d.getSeconds()%30===0)renderCars();
   if(d.getSeconds()===0||lastLd<0){lastLd=1;renderLeader();}
 }
 
@@ -1886,19 +1911,19 @@ function quickEms(){
 
 // ===== 動態表自動同步 =====
 const dynKeyOf=p=>p?JSON.stringify({...p,slot:undefined}):'';
-let dynBusy=false,dynWait=0,dynTimer=null;
+let dynBusy=false,dynWait=0,dynTimer=null,dynWroteAt=0;
 function dynAutoSoon(){if(TV)return;clearTimeout(dynTimer);dynTimer=setTimeout(()=>dynAuto(),1500);}
 function dynAuto(){
   if(TV||S.dynMode!=='auto'||dynBusy||S.dynConflict||Date.now()<dynWait)return;
   const key=localStorage.getItem(KEY+'.key')||'';if(!key||!S.liveUrl)return;
   const p=dynPayload();
   if(p.onDuty==='')return;                         // 輪休表尚未讀取
-  if(dynKeyOf(p)===dynKeyOf(S.dynLast))return;      // 沒有變動
+  if(dynKeyOf(p)===dynKeyOf(S.dynLast)){S.dynCheckAt=Date.now();save();dynShow();return;}      // 沒有變動
   dynBusy=true;dynShow('ing');
   dynSend(p,false).then(res=>{
-    dynBusy=false;
-    if(res.ok){S.dynLast=p;S.dynAt=Date.now();S.dynConflict='';save();dynShow();}
-    else if(res.conflict){S.dynConflict=res.error||'動態表有人工修改';save();dynShow();}
+    dynBusy=false;dynWroteAt=Date.now();
+    if(res.ok){S.dynLast=p;S.dynAt=S.dynCheckAt=Date.now();S.dynConflict='';S.dynDiff=null;save();dynShow();}
+    else if(res.conflict){S.dynConflict=res.error||'動態表有人工修改';if(res.block)dynGotBlock(res.block);save();dynShow();}
     else{dynWait=Date.now()+60000;dynShow('err',res.error);}
   });
 }
@@ -1908,6 +1933,7 @@ function dynSend(payload,force){
     const key=localStorage.getItem(KEY+'.key')||'';
     const id=(String(S.dynUrl||'').match(/\/d\/([\w-]{20,})/)||[])[1];
     if(!id){resolve({ok:false,error:'請先在設定填入動態表網址'});return;}
+    if(stageBlocked(S.liveUrl,id)){resolve({ok:false,error:stageBlocked(S.liveUrl,id)});return;}
     const cb='__dy'+Math.random().toString(36).slice(2),sc=document.createElement('script');
     const done=r=>{clearTimeout(to);delete window[cb];sc.remove();resolve(r);};
     const to=setTimeout(()=>done({ok:false,error:'逾時'}),30000);
@@ -1968,18 +1994,112 @@ function writeDyn(){
   const p=dynPayload();
   dynSend(p,true).then(res=>{
     btn.disabled=false;
-    if(res.ok){m.className='ok';m.textContent='✔ 已寫入動態表';S.dynLast=p;S.dynAt=Date.now();S.dynConflict='';save();dynShow();setTimeout(()=>dDyn.close(),1200);}
+    dynWroteAt=Date.now();
+    if(res.ok){m.className='ok';m.textContent='✔ 已寫入動態表';S.dynLast=p;S.dynAt=S.dynCheckAt=Date.now();S.dynConflict='';S.dynDiff=null;save();dynShow();setTimeout(()=>dDyn.close(),1200);}
     else{m.className='err';m.textContent='寫入失敗：'+(res.error||'未知錯誤');}
   });
+}
+// ===== 讀取動態表：發現人工修改（B）=====
+const dynNorm=x=>(x===null||x===undefined)?'':String(x).trim();
+function dynBlockOf(p){   // 與 Code.gs 的 blockOf_ 相同，方便比對
+  const pd=(a,n)=>{a=(a||[]).map(dynNorm).slice(0,n);while(a.length<n)a.push('');return a;};
+  const rows=p.rows||[];
+  return {leader:dynNorm(p.leader),onDuty:dynNorm(p.onDuty),standby:pd(p.standby,12),stopped:pd(p.stopped,6),
+    rows:[0,1,2,3,4].map(i=>{const x=rows[i]||{};return [i>=2?dynNorm(x.item):'',dynNorm(x.veh),dynNorm(x.n)];}),rest:dynNorm(p.rest)};
+}
+function payloadOfBlock(b){return {leader:b.leader,onDuty:b.onDuty,standby:[...b.standby],stopped:[...b.stopped],
+  rows:b.rows.map((r,i)=>({item:i===0?'火警':i===1?'救護':r[0],veh:r[1],n:r[2]})),rest:b.rest};}
+const sameBlock=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const carToks=x=>String(x||'').split(/[+＋、,，\s\/]+/).map(t=>t.replace(/車$/,'').trim()).filter(Boolean);
+function dynDiffOf(b){
+  const sb=new Set(b.standby.flatMap(carToks)),st=new Set(b.stopped.flatMap(carToks));
+  if(!sb.size&&!st.size&&!b.rows.some(r=>r[1]))return {cars:[],fields:[],blank:true};
+  const cat=x=>x==='在隊'?'在隊':(x==='保養'||x==='送修')?'報停':'出勤';
+  const itemOf=n=>{for(let i=0;i<5;i++){const r=b.rows[i];if(carToks(r[1]).includes(n)&&r[2]!=='')return i===0?'火警':i===1?'救護':(r[0]||'其他');}return '';};
+  const cars=S.vehicles.filter(v=>v.type!=='摩托車').map(v=>{const sc=sb.has(v.name)?'在隊':st.has(v.name)?'報停':'出勤';
+    return {name:v.name,sheet:sc,board:v.status,item:sc==='出勤'?itemOf(v.name):''};}).filter(x=>x.sheet!==cat(x.board));
+  const p=dynBlockOf(dynPayload()),fields=[];
+  if(p.leader!==b.leader)fields.push(['帶隊官',b.leader,p.leader]);
+  if(p.onDuty!==b.onDuty)fields.push(['今日服勤人數',b.onDuty,p.onDuty]);
+  if(p.rest!==b.rest)fields.push(['休息班人次',b.rest,p.rest]);
+  return {cars,fields};
+}
+function jsonp(url,params,ms){
+  return new Promise(resolve=>{
+    const cb='__jp'+Math.random().toString(36).slice(2),sc=document.createElement('script');
+    const done=r=>{clearTimeout(to);delete window[cb];sc.remove();resolve(r);};
+    const to=setTimeout(()=>done({ok:false,error:'逾時'}),ms||30000);
+    window[cb]=r=>done(r||{ok:false,error:'未知錯誤'});
+    sc.onerror=()=>done({ok:false,error:'無法連線到同步中繼站'});
+    sc.src=url+(url.includes('?')?'&':'?')+Object.entries({...params,callback:cb,_:Date.now()}).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
+    document.head.appendChild(sc);
+  });
+}
+let dynReading=false;
+function dynRead(){
+  if(TV||dynReading||dynBusy)return;
+  const key=localStorage.getItem(KEY+'.key')||'';if(!key||!S.liveUrl)return;
+  const id=(String(S.dynUrl||'').match(/\/d\/([\w-]{20,})/)||[])[1];if(!id||stageBlocked(S.liveUrl,id))return;
+  dynReading=true;const t0=Date.now();
+  jsonp(S.liveUrl,{action:'dynread',key,id}).then(res=>{
+    dynReading=false;
+    if(!res||!res.ok||!res.block)return;              // 讀取失敗不影響原本的同步
+    if(dynBusy||t0<dynWroteAt)return;                 // 讀取期間看板剛寫入過，這次結果不採用
+    dynGotBlock(res.block);
+  });
+}
+function dynGotBlock(block){
+  S.dynReadAt=Date.now();
+  const manual=!S.dynLast||!sameBlock(block,dynBlockOf(S.dynLast));
+  if(!manual){S.dynDiff=null;if(S.dynConflict==='動態表中山區塊有人工修改')S.dynConflict='';save();dynShow();return;}   // 動態表已和看板最後寫入的一致 → 恢復自動同步
+  const d=dynDiffOf(block);d.block=block;d.at=Date.now();
+  S.dynDiff=d;
+  if(S.dynMode==='auto'&&S.dynLast&&!S.dynConflict)S.dynConflict='動態表中山區塊有人工修改';
+  save();dynShow();
+}
+function openDynDiff(){
+  const d=S.dynDiff;if(!d){openDyn();return;}
+  const t=new Date(d.at||Date.now());
+  const st=x=>x.sheet==='出勤'?'出勤'+(x.item?'（'+esc(x.item)+'）':''):x.sheet;
+  document.getElementById('ddBody').innerHTML=
+    `<div class="hint" style="margin-bottom:6px">讀取時間 ${pad(t.getHours())}:${pad(t.getMinutes())}　<a href="#" onclick="dynRead();setTimeout(openDynDiff,2500);return false" style="color:var(--blue)">重新讀取</a></div>`+
+    (d.cars.length?`<table class="dyn"><tr><th>車輛</th><th>動態表</th><th>看板目前</th></tr>${d.cars.map(x=>`<tr><td><b>${esc(x.name)}</b></td><td>${st(x)}</td><td>${esc(x.board)}</td></tr>`).join('')}</table>`:'<div>車輛狀態相同。</div>')+
+    (d.fields.length?`<div style="margin-top:8px">其他欄位不同：</div><table class="dyn"><tr><th>欄位</th><th>動態表</th><th>看板計算</th></tr>${d.fields.map(f=>`<tr><td>${f[0]}</td><td>${esc(f[1])||'—'}</td><td>${esc(f[2])||'—'}</td></tr>`).join('')}</table>`:'')+
+    `<div class="hint" style="margin-top:8px">・以動態表為準：把看板的車輛狀態改成和動態表一樣，之後恢復自動同步。帶隊官、人數等欄位仍由看板依輪休表計算後寫入。<br>・以看板為準：開啟手動同步，用看板內容覆蓋動態表中山區塊。</div>`;
+  document.getElementById('ddAdopt').style.display=d.cars.length?'':'none';
+  dDynDiff.showModal();
+}
+function adoptDyn(){
+  const d=S.dynDiff;if(!d||!d.block)return;
+  undoSnap=snapCars();
+  const now=Date.now(),b=d.block;
+  d.cars.forEach(x=>{const v=carBy(x.name);if(!v)return;
+    const clr=()=>{delete v.case;delete v.crewN;delete v.grp;delete v.crewNames;};
+    if(x.sheet==='在隊'){v.status='在隊';v.since=now;clr();}
+    else if(x.sheet==='報停'){if(v.status!=='保養'&&v.status!=='送修')v.status='保養';v.since=now;clr();}
+    else{
+      const ri=b.rows.findIndex(r=>carToks(r[1]).includes(v.name)&&r[2]!=='');const r=b.rows[ri];
+      const cars=r?carToks(r[1]):[],n=r?(+r[2]||0):0;
+      clr();v.status='出勤中';v.since=now;v.case=x.item||'出勤';v.grp='d'+now+'_'+ri;
+      v.crewN=n&&cars.length?Math.round(n/cars.length):(v.seats||0);
+    }
+  });
+  S.dynLast=payloadOfBlock(b);S.dynConflict='';S.dynDiff=null;
+  dDynDiff.close();afterCarChange();toast('✔ 已依動態表更新看板車輛');
 }
 function dynShow(st,msg){const el=document.getElementById('dynStat');if(!el)return;
   const t=S.dynAt?new Date(S.dynAt):null,tt=t?`${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}`:'';
   const auto=S.dynMode==='auto';
-  if(S.dynConflict){el.className='warn';el.innerHTML=`⚠ ${esc(S.dynConflict)}，自動同步已暫停<button onclick="openDyn()">確認並手動同步</button>`;return;}
+  const dd=S.dynDiff;
+  if(dd&&(dd.cars.length||dd.fields.length)){
+    const t=dd.cars.length?dd.cars.map(x=>`${x.name}（動態表${x.sheet==='出勤'&&x.item?x.item:x.sheet}／看板${x.board}）`).join('、'):dd.fields.map(f=>f[0]).join('、');
+    el.className='warn';el.innerHTML=`⚠ 動態表有人工修改：${esc(t)}${S.dynConflict?'，自動同步已暫停':''}<button onclick="openDynDiff()">查看與處理</button>`;return;}
+  if(S.dynConflict){el.className='warn';el.innerHTML=`⚠ ${esc(S.dynConflict)}，自動同步已暫停<button onclick="${dd?'openDynDiff()':'openDyn()'}">確認並處理</button>`;return;}
   if(st==='ing'){el.className='man';el.textContent='動態表同步中…';return;}
   if(st==='err'){el.className='err';el.textContent=`⚠ 動態表同步失敗（${msg||''}），1 分鐘後重試`;return;}
   el.className=auto?'ok':'man';
-  el.textContent=(auto?'動態表自動同步':'動態表手動同步')+(tt?`　✔ ${tt}`:'');
+  const ck=Math.max(S.dynCheckAt||0,S.dynReadAt||0),c=ck?new Date(ck):null;
+  el.textContent=(auto?'動態表自動同步':'動態表手動同步')+(tt?`　✔ ${tt} 寫入`:'')+(c&&auto?`｜${pad(c.getHours())}:${pad(c.getMinutes())} 已檢查`:'');
 }
 
 // ===== 出勤紀錄 =====
@@ -2121,7 +2241,10 @@ if(FIT){
 }
 lastShared=sharedJson();
 renderAll();dynShow();setTimeout(autoFitAll,600);if(document.fonts)document.fonts.ready.then(()=>autoFitAll());setInterval(tick,1000);syncShow(S.syncAt?'ok':'');syncOnline(false);if(!TV)keepAwake();
+if(STAGE){document.title='【測試】'+document.title;const r=document.createElement('div');r.className='stageRibbon';r.textContent='🧪 測試環境（不影響正式看板與派遣表）';document.body.appendChild(r);}
 livePull();setInterval(livePull,TV?15000:60000);
+if(!TV){setInterval(()=>dynAuto(),30000);setInterval(dynRead,180000);setTimeout(dynRead,15000);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){dynAuto();dynRead();}});}
 if(TV){
   let seenReload=null;window.tvReloadCheck=()=>{if(seenReload===null)seenReload=S.tvReload;else if(S.tvReload!==seenReload)hardReload();};
   notesEl.readOnly=true;
