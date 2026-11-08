@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="646fd5271bd0">
+<meta name="build" content="571fdb4fb645">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -519,6 +519,14 @@ table.hist td.hw{white-space:nowrap;color:var(--muted);font-size:13px}
 .htag.c-動態表{background:#14304f;color:#d6ebff}.htag.c-網路{background:#5a2a0c;color:#ffd8b0}.htag.c-同步{background:#3b2a5a;color:#e6d6ff}
 .htag.c-系統{background:#2a3550;color:#c9d3e6}.htag.c-操作{background:#2f3b2a;color:#dfe9d6}
 table.hist small.hp{color:#ffb347}
+/* ===== v1.29 斷網提示視窗 ===== */
+dialog.netDlg[open]{position:fixed;inset:0;margin:auto;height:fit-content;z-index:10001}
+dialog.netDlg{width:min(640px,92vw);border:2px solid #e8590c;box-shadow:0 0 0 9999px #0008,0 10px 40px #000c}
+dialog.netDlg h3{color:#ffb38a;font-size:24px}
+#netInfo{font-size:18px;line-height:1.6;margin-bottom:8px}
+#netInfo b{color:#ffd166}
+.netBox{background:var(--panel2);border-radius:8px;padding:8px 12px;margin-top:8px;font-size:15px;line-height:1.7}
+.netBox b{display:block;color:#cfd8ea;margin-bottom:2px}
 </style>
 </head>
 <body>
@@ -714,6 +722,21 @@ table.hist small.hp{color:#ffb347}
   <div class="dbtns"><button style="margin-right:auto" onclick="dDynDiff.close()">先不處理</button><button onclick="dDynDiff.close();openDyn()">以看板為準（覆蓋動態表）</button><button class="ok" id="ddAdopt" onclick="adoptDyn()">以動態表為準（更新看板）</button></div>
 </dialog>
 
+<!-- 斷網提示 -->
+<dialog id="dNet" class="netDlg">
+  <h3>⚠ 網路已中斷</h3>
+  <div id="netInfo"></div>
+  <div class="netBox"><b>目前影響</b>
+    <div>・看板資料暫停更新（勤務表、電視同步、派遣科動態表）</div>
+    <div>・出勤、返隊照常操作，看板會先記住，恢復後自動補上</div>
+    <div>・若有出勤，請記得之後確認派遣科動態表是否正確</div></div>
+  <div class="netBox"><b>處理方式</b>
+    <div id="netStep1">1. 按「🔑 開啟登入頁」，輸入員工編號重新登入</div>
+    <div>2. 回到看板，按「重新檢查」</div>
+    <div>3. 仍無法連線 → 檢查網路線，或通報資訊人員</div></div>
+  <div class="dbtns"><button style="margin-right:auto" onclick="netSnoozeNow()">5 分鐘後再提醒</button><button onclick="netCheck()">重新檢查</button><button class="ok" id="netLoginBtn" onclick="window.open(NET_LOGIN,'_blank')">🔑 開啟登入頁</button></div>
+</dialog>
+
 <!-- 管理密碼 -->
 <dialog id="dAdmin">
   <h3>🔒 需要管理密碼</h3>
@@ -746,6 +769,13 @@ table.hist small.hp{color:#ffb347}
   <label>同步寫入密碼（只有值班台需要填；電視不用填）</label><input id="sKey" type="password" autocomplete="off">
   <label style="display:flex;gap:8px;align-items:center;color:var(--text)"><input id="sKeyClr" type="checkbox" style="width:auto">清除這台電腦的同步寫入密碼</label>
   <label>看板顯示的分隊名稱</label><input id="sUnit">
+  <label>斷網提示音（叮—咚，只響一次）</label>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <label style="display:flex;gap:6px;align-items:center;color:var(--text);margin:0"><input id="sChime" type="checkbox" style="width:auto">開啟提示音</label>
+    <label style="display:flex;gap:6px;align-items:center;color:var(--text);margin:0"><input id="sQuiet" type="checkbox" style="width:auto">夜間靜音</label>
+    <input id="sQFrom" type="number" min="0" max="23" style="width:64px"> 點 ～ <input id="sQTo" type="number" min="0" max="23" style="width:64px"> 點
+    <button type="button" class="act" onclick="audioUnlock();setTimeout(()=>chime(true),50)">▶ 試聽</button>
+  </div>
   <label>電視畫面（會透過即時同步套用到電視，約 15 秒內生效）</label>
   <div class="row2">
     <div><label style="margin-top:0">縮放比例（0＝自動；例：0.9＝90%）</label><input id="sTvScale" type="number" step="0.05" min="0" max="3"></div>
@@ -918,6 +948,20 @@ async function logFlush(){
 }
 setInterval(logFlush,60000);
 
+// ===== 斷網提示音（叮—咚，只響一次；夜間靜音）=====
+let audioCtx=null;
+function audioUnlock(){try{if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();}catch(e){}}
+addEventListener('pointerdown',audioUnlock,true);addEventListener('keydown',audioUnlock,true);
+function inQuiet(){const f=S.quietFrom??22,t=S.quietTo??6,h=new Date().getHours();if(S.quietOn===false||f===t)return false;return f<t?(h>=f&&h<t):(h>=f||h<t);}
+function chime(force){
+  if(TV)return;if(!force&&(S.netChime===false||inQuiet()))return;
+  try{audioUnlock();const c=audioCtx;if(!c||c.state!=='running')return;
+    [[880,0],[660,0.55]].forEach(([f,at])=>{const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f;
+      const t0=c.currentTime+at;g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(0.25,t0+0.03);g.gain.exponentialRampToValueAtTime(0.0001,t0+0.9);
+      o.connect(g).connect(c.destination);o.start(t0);o.stop(t0+0.95);});
+  }catch(e){}
+}
+
 // ===== 網路斷線偵測 =====
 // 每 30 秒向看板網站送一個很小的請求；連續 2 次失敗（約 1 分鐘）就顯示提示列，恢復後自動消失並立即重新同步
 const NET_LOGIN='https://auth.hccg.gov.tw/HccgGovWeb/Logout.aspx';   // 分隊網路（員工編號）登入頁
@@ -930,11 +974,25 @@ async function netCheck(){
     clearTimeout(tm);ok=r.ok||r.status===304;}catch(e){ok=false;}
   if(ok){const wasDown=netDown,last=netOkAt;netOkAt=Date.now();netFail=0;if(netDown){netDown=false;netShow();
       if(wasDown)logEvent('網路',`網路恢復（中斷約 ${Math.max(1,Math.round((Date.now()-last)/60000))} 分鐘）`);logFlush();
-      try{toast('✔ 網路已恢復，重新同步中…');const b=document.querySelector('#toast button');if(b)b.style.display='none';}catch(e){}
+      try{toast(`✔ 網路已恢復（中斷約 ${Math.max(1,Math.round((Date.now()-last)/60000))} 分鐘），重新同步中…`);const b=document.querySelector('#toast button');if(b)b.style.display='none';}catch(e){}
       try{syncOnline(false);}catch(e){} try{livePull();}catch(e){} try{syncClock();}catch(e){}}}
   else{netFail++;if(netFail>=2&&!netDown){netDown=true;netShow();const t=new Date(netOkAt);logEvent('網路',`網路中斷（最後連線 ${pad(t.getHours())}:${pad(t.getMinutes())}）`);}else if(netDown)netShow();}
 }
+let netSnooze=0;
+function netSnoozeNow(){netSnooze=Date.now()+5*60000;dNet.close();}
+function netDlgShow(){   // 值班台：斷網時跳出視窗（電視只顯示上方提示列）
+  const d=document.getElementById('dNet');if(TV||!d)return;
+  if(!netDown){if(d.open)d.close();return;}
+  const t=new Date(netOkAt),hm=pad(t.getHours())+':'+pad(t.getMinutes()),mins=Math.max(1,Math.round((Date.now()-netOkAt)/60000));
+  const off=navigator.onLine===false;
+  document.getElementById('netInfo').innerHTML=`中斷時間：<b>${hm}</b>（已中斷 <b id="netMins">${mins}</b> 分鐘）<br>可能原因：${off?'網路線或 Wi-Fi 中斷':'分隊網路已登出，需要重新登入員工編號（或網路線／Wi-Fi 中斷）'}`;
+  document.getElementById('netStep1').textContent=off?'1. 檢查網路線是否鬆脫，或 Wi-Fi 是否連上':'1. 按「🔑 開啟登入頁」，輸入員工編號重新登入';
+  document.getElementById('netLoginBtn').style.display=off?'none':'';
+  if(!d.open&&Date.now()>=netSnooze){d.show();chime();}
+}
+setInterval(()=>{const e=document.getElementById('netMins');if(e&&netDown)e.textContent=Math.max(1,Math.round((Date.now()-netOkAt)/60000));},15000);
 function netShow(){const el=document.getElementById('netBar');if(!el)return;
+  netDlgShow();
   if(!netDown){el.hidden=true;return;}
   const t=new Date(netOkAt),hm=pad(t.getHours())+':'+pad(t.getMinutes());
   const off=navigator.onLine===false;
@@ -2332,6 +2390,8 @@ function openSettings0(){
   const hk=!!localStorage.getItem(KEY+'.key');document.getElementById('sKey').value='';document.getElementById('sKey').placeholder=hk?'已設定（留空表示不變更）':'尚未設定';
   document.getElementById('sKeyClr').checked=false;document.getElementById('sKeyClr').parentElement.style.display=hk?'':'none';
   document.getElementById('sUnit').value=S.unit||'';
+  document.getElementById('sChime').checked=S.netChime!==false;document.getElementById('sQuiet').checked=S.quietOn!==false;
+  document.getElementById('sQFrom').value=S.quietFrom??22;document.getElementById('sQTo').value=S.quietTo??6;
   document.getElementById('sMin').value=S.syncMin;
   dSet.showModal();
 }
@@ -2348,7 +2408,9 @@ function saveSettings(){
   const lu=document.getElementById('sSync').value.trim();if(lu!==S.liveUrl){S.liveUrl=lu;livePulled=false;setTimeout(livePull,200);}
   const ok0=localStorage.getItem(KEY+'.key')||'',clr=document.getElementById('sKeyClr').checked,nk=clr?'':(document.getElementById('sKey').value.trim()||ok0),keyChanged=nk!==ok0;
   if(nk)localStorage.setItem(KEY+'.key',nk);else localStorage.removeItem(KEY+'.key');
-  {const u=document.getElementById('sUnit').value.trim();if(u&&u!==S.unit){S.unit=u;unitEl.textContent=u;}}logEvent('操作','修改設定'+(keyChanged?(nk?'（變更同步密碼）':'（清除同步密碼）'):''));
+  {const u=document.getElementById('sUnit').value.trim();if(u&&u!==S.unit){S.unit=u;unitEl.textContent=u;}}
+  S.netChime=document.getElementById('sChime').checked;S.quietOn=document.getElementById('sQuiet').checked;
+  {const hh=x=>Math.min(23,Math.max(0,parseInt(x)||0));S.quietFrom=hh(document.getElementById('sQFrom').value);S.quietTo=hh(document.getElementById('sQTo').value);}logEvent('操作','修改設定'+(keyChanged?(nk?'（變更同步密碼）':'（清除同步密碼）'):''));
   if(keyChanged&&nk){if(!S.sharedAt)S.sharedAt=Date.now();livePulled=true;setTimeout(livePush,300);}  // 密碼變更 → 立刻上傳一次
   S.tvScale=Math.max(0,parseFloat(document.getElementById('sTvScale').value)||0);S.tvDebug=document.getElementById('sTvDebug').checked;
   S.syncMin=Math.max(5,+document.getElementById('sMin').value||30);
