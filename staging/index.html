@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="571fdb4fb645">
+<meta name="build" content="e20a9b203d4a">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -250,6 +250,8 @@ html.tv #wake{display:none}
   background:linear-gradient(90deg,#b3261e,#e8590c);color:#fff;font-size:26px;font-weight:800;box-shadow:0 4px 18px #000a;animation:netBlink 1.4s infinite}
 #netBar[hidden]{display:none}
 #netBar small{font-size:17px;font-weight:600;opacity:.95}
+#netBar .nchk{font-size:15px;font-weight:600;background:#0004;padding:3px 10px;border-radius:6px}
+#netInfo .nchk{font-size:15px;color:#ffb38a}
 #netBar button{font-family:inherit;font-size:17px;font-weight:700;padding:6px 14px;border-radius:8px;border:2px solid #fff;background:#0003;color:#fff;cursor:pointer}
 html.tv #netBar button{display:none}
 @keyframes netBlink{50%{filter:brightness(1.25)}}
@@ -734,7 +736,7 @@ dialog.netDlg h3{color:#ffb38a;font-size:24px}
     <div id="netStep1">1. 按「🔑 開啟登入頁」，輸入員工編號重新登入</div>
     <div>2. 回到看板，按「重新檢查」</div>
     <div>3. 仍無法連線 → 檢查網路線，或通報資訊人員</div></div>
-  <div class="dbtns"><button style="margin-right:auto" onclick="netSnoozeNow()">5 分鐘後再提醒</button><button onclick="netCheck()">重新檢查</button><button class="ok" id="netLoginBtn" onclick="window.open(NET_LOGIN,'_blank')">🔑 開啟登入頁</button></div>
+  <div class="dbtns"><button style="margin-right:auto" onclick="netSnoozeNow()">5 分鐘後再提醒</button><button onclick="netManual(this)">重新檢查</button><button class="ok" id="netLoginBtn" onclick="window.open(NET_LOGIN,'_blank')">🔑 開啟登入頁</button></div>
 </dialog>
 
 <!-- 管理密碼 -->
@@ -978,14 +980,22 @@ async function netCheck(){
       try{syncOnline(false);}catch(e){} try{livePull();}catch(e){} try{syncClock();}catch(e){}}}
   else{netFail++;if(netFail>=2&&!netDown){netDown=true;netShow();const t=new Date(netOkAt);logEvent('網路',`網路中斷（最後連線 ${pad(t.getHours())}:${pad(t.getMinutes())}）`);}else if(netDown)netShow();}
 }
-let netSnooze=0;
+let netSnooze=0,netCheckMsg='';
+// 手動「重新檢查」：顯示檢查中，結果寫在提示列與視窗上
+async function netManual(btn){
+  if(btn){btn.disabled=true;btn.textContent='檢查中…';}
+  await netCheck();
+  const t=new Date();netCheckMsg=netDown?`${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())} 檢查：仍無法連線`:'';
+  if(btn){btn.disabled=false;btn.textContent='重新檢查';}
+  netShow();
+}
 function netSnoozeNow(){netSnooze=Date.now()+5*60000;dNet.close();}
 function netDlgShow(){   // 值班台：斷網時跳出視窗（電視只顯示上方提示列）
   const d=document.getElementById('dNet');if(TV||!d)return;
-  if(!netDown){if(d.open)d.close();return;}
+  if(!netDown){netCheckMsg='';if(d.open)d.close();return;}
   const t=new Date(netOkAt),hm=pad(t.getHours())+':'+pad(t.getMinutes()),mins=Math.max(1,Math.round((Date.now()-netOkAt)/60000));
   const off=navigator.onLine===false;
-  document.getElementById('netInfo').innerHTML=`中斷時間：<b>${hm}</b>（已中斷 <b id="netMins">${mins}</b> 分鐘）<br>可能原因：${off?'網路線或 Wi-Fi 中斷':'分隊網路已登出，需要重新登入員工編號（或網路線／Wi-Fi 中斷）'}`;
+  document.getElementById('netInfo').innerHTML=`中斷時間：<b>${hm}</b>（已中斷 <b id="netMins">${mins}</b> 分鐘）<br>可能原因：${off?'網路線或 Wi-Fi 中斷':'分隊網路已登出，需要重新登入員工編號（或網路線／Wi-Fi 中斷）'}`+(netCheckMsg?`<div class="nchk">${netCheckMsg}</div>`:'');
   document.getElementById('netStep1').textContent=off?'1. 檢查網路線是否鬆脫，或 Wi-Fi 是否連上':'1. 按「🔑 開啟登入頁」，輸入員工編號重新登入';
   document.getElementById('netLoginBtn').style.display=off?'none':'';
   if(!d.open&&Date.now()>=netSnooze){d.show();chime();}
@@ -998,7 +1008,7 @@ function netShow(){const el=document.getElementById('netBar');if(!el)return;
   const off=navigator.onLine===false;
   const msg=TV?'電視網路已中斷':off?'網路線／Wi-Fi 已中斷':'網路已中斷，可能需要重新登入員工編號';
   el.innerHTML=`⚠ ${msg}<small>（最後連線 ${hm}，畫面資料可能不是最新）</small>`+
-    (TV?'':`${off?'':`<button onclick="window.open(NET_LOGIN,'_blank')">🔑 開啟登入頁</button>`}<button onclick="netCheck()">重新檢查</button>`);
+    (TV?'':`${off?'':`<button onclick="window.open(NET_LOGIN,'_blank')">🔑 開啟登入頁</button>`}<button onclick="netManual(this)">重新檢查</button>`)+(netCheckMsg?`<small class="nchk">${netCheckMsg}</small>`:'');
   el.hidden=false;}
 window.addEventListener('offline',()=>{netFail=1;netCheck();});
 window.addEventListener('online',()=>netCheck());
