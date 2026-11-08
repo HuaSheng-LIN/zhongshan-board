@@ -2,6 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
+<meta name="build" content="5be7ca1813be">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -496,6 +497,11 @@ html.tv #pTab .tcol .tr .p .cd{font-size:12px;font-size:min(14px,40cqh)}
 .crewpick button i{white-space:nowrap}
 /* ===== v1.26 測試環境標示 ===== */
 .stageRibbon{position:fixed;left:0;bottom:0;z-index:9998;background:#e8590c;color:#fff;font-weight:800;padding:5px 14px;border-top-right-radius:10px;font-size:16px;box-shadow:0 0 10px #000a;pointer-events:none}
+/* ===== v1.27 自動更新提示 ===== */
+#updBar{position:fixed;right:12px;bottom:10px;z-index:9997;background:#14304f;border:1px solid #4ea8de;color:#d6ebff;border-radius:10px;padding:6px 12px;font-size:15px;display:flex;gap:10px;align-items:center;box-shadow:0 2px 10px #000a}
+#updBar[hidden]{display:none}
+#updBar button{font-family:inherit;font-size:14px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #4ea8de;background:#1e6fd9;color:#fff;cursor:pointer}
+html.tv #updBar{display:none}
 </style>
 </head>
 <body>
@@ -574,6 +580,7 @@ html.tv #pTab .tcol .tr .p .cd{font-size:12px;font-size:min(14px,40cqh)}
   </div>
   <div id="now" hidden></div>
   <div id="toast"></div>
+  <div id="updBar" hidden>🔄 有新版本，閒置 5 分鐘後自動更新<button onclick="hardReload()">立即更新</button></div>
   <div id="netBar" hidden></div>
 </main>
 
@@ -810,6 +817,29 @@ function wakeShow(){const el=document.getElementById('wake');if(!el)return;
 document.addEventListener('visibilitychange',keepAwake);
 document.addEventListener('click',()=>{if(!wakeLock)keepAwake();},true);
 setInterval(keepAwake,60000);
+
+// ===== 自動更新 =====
+// 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
+// （資料都存在這台電腦，重新整理不會遺失）
+const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
+let updNew=false,lastInput=Date.now();
+['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
+async function updCheck(){
+  if(!/^https?:/.test(location.protocol)||!BUILD||BUILD==='__BUILD__'||updNew)return;
+  try{
+    const r=await fetch(location.pathname+'?build='+_Date.now(),{cache:'no-store',headers:{Range:'bytes=0-2047'}});
+    if(!r.ok&&r.status!==206)return;
+    const m=(await r.text()).match(/<meta name="build" content="([^"]+)"/);
+    if(m&&m[1]!==BUILD&&m[1]!=='__BUILD__'){updNew=true;const b=document.getElementById('updBar');if(b)b.hidden=false;}
+  }catch(e){}
+}
+function updTry(){
+  if(!updNew)return;
+  const busy=document.querySelector('dialog[open]')||Date.now()-lastInput<5*60000||
+    (document.activeElement&&/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName));
+  if(!busy)hardReload();
+}
+setTimeout(updCheck,60000);setInterval(updCheck,30*60000);setInterval(updTry,30000);
 
 // ===== 網路斷線偵測 =====
 // 每 30 秒向看板網站送一個很小的請求；連續 2 次失敗（約 1 分鐘）就顯示提示列，恢復後自動消失並立即重新同步
