@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="6e75f579ff47">
+<meta name="build" content="21860068f812">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -502,7 +502,9 @@ html.tv #pTab .tcol .tr .p .cd{font-size:12px;font-size:min(14px,40cqh)}
 #updBar[hidden]{display:none}
 #updBar button{font-family:inherit;font-size:14px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #4ea8de;background:#1e6fd9;color:#fff;cursor:pointer}
 html.tv #updBar{display:none}
-/* ===== v1.29 勤務歷程 ===== */
+/* ===== v1.29 系統紀錄 ===== */
+dialog.histDlg{width:min(1200px,96vw)}
+.histScroll{max-height:62vh;overflow:auto}
 .histBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .histBar b{font-size:18px;min-width:120px;text-align:center}
 .histBar .hc{font-family:inherit;font-size:13px;padding:2px 9px;border-radius:12px;border:1px solid #3a4a6b;background:var(--panel2);color:var(--text);cursor:pointer}
@@ -566,7 +568,7 @@ table.hist small.hp{color:#ffb347}
   </div>
   <div class="rgt">
     <section id="pDuty" class="panel">
-      <h2><span class="tabs"><button id="tabDuty" onclick="setTab('duty')">📋 今日勤務表</button><button id="tabTask" onclick="setTab('task')">🔥 火警任務編組</button><button id="tabNotes" onclick="setTab('notes')">📝 交接事項</button><button id="tabHist" onclick="setTab('hist')">📜 勤務歷程</button><button id="tabLogs" onclick="setTab('logs')" style="display:none">出勤紀錄</button></span>
+      <h2><span class="tabs"><button id="tabDuty" onclick="setTab('duty')">📋 今日勤務表</button><button id="tabTask" onclick="setTab('task')">🔥 火警任務編組</button><button id="tabNotes" onclick="setTab('notes')">📝 交接事項</button><button id="tabLogs" onclick="setTab('logs')" style="display:none">出勤紀錄</button></span>
         <span id="viewDay" class="hint"></span>
         <span class="acts" id="actsDuty">
           <button class="act" onclick="shiftView(-1)">◀ 前一天</button>
@@ -585,11 +587,6 @@ table.hist small.hp{color:#ffb347}
           <table class="log"><thead><tr><th>時間</th><th>案類</th><th>地點 / 摘要</th><th>出勤車輛</th><th>狀態</th><th></th></tr></thead>
           <tbody id="logs"></tbody></table>
         </div>
-      </div>
-      <div class="grow col2" id="wrapHist">
-        <div class="histBar"><button class="act" onclick="histShift(-1)">◀ 前一天</button><b id="histDay"></b><button class="act" onclick="histShift(1)">後一天 ▶</button><button class="act" onclick="histShift(0)">今天</button><span id="histCats"></span><span id="histMsg" class="hint"></span></div>
-        <div class="scroll grow"><table class="hist"><thead><tr><th>時間</th><th>類別</th><th>內容</th><th>時段值班</th></tr></thead><tbody id="histBody"></tbody></table></div>
-        <div class="hint" style="margin-top:4px">勤務日以 08:00 為一天開始；「時段值班」依勤務表推定。完整歷程存在維護者的私人試算表，保存 1 年。</div>
       </div>
       <div class="grow col2" id="wrapNotes">
         <div id="dutyMemo" style="display:none"></div>
@@ -717,6 +714,15 @@ table.hist small.hp{color:#ffb347}
   <div class="dbtns"><button style="margin-right:auto" onclick="dDynDiff.close()">先不處理</button><button onclick="dDynDiff.close();openDyn()">以看板為準（覆蓋動態表）</button><button class="ok" id="ddAdopt" onclick="adoptDyn()">以動態表為準（更新看板）</button></div>
 </dialog>
 
+<!-- 系統紀錄 -->
+<dialog id="dHist" class="wide histDlg">
+  <h3>📜 系統紀錄</h3>
+  <div class="histBar"><button class="act" onclick="histShift(-1)">◀ 前一天</button><b id="histDay"></b><button class="act" onclick="histShift(1)">後一天 ▶</button><button class="act" onclick="histShift(0)">今天</button><span id="histCats"></span><span id="histMsg" class="hint"></span></div>
+  <div class="histScroll"><table class="hist"><thead><tr><th>時間</th><th>類別</th><th>內容</th><th>時段值班</th></tr></thead><tbody id="histBody"></tbody></table></div>
+  <div class="hint" style="margin-top:6px">勤務日以 08:00 為一天開始；「時段值班」依勤務表推定。</div>
+  <div class="dbtns"><button onclick="dHist.close()">關閉</button></div>
+</dialog>
+
 <!-- 設定 -->
 <dialog id="dSet">
   <h3>⚙ 設定</h3>
@@ -754,7 +760,7 @@ table.hist small.hp{color:#ffb347}
     <button onclick="document.getElementById('bak').click()">⬆ 匯入備份</button>
   </div>
   <input type="file" id="bak" accept=".json" style="display:none" onchange="importData(this)">
-  <div class="dbtns"><button onclick="dSet.close()">取消</button><button class="ok" onclick="saveSettings()">儲存</button></div>
+  <div class="dbtns"><button style="margin-right:auto" onclick="dSet.close();openHist()">📜 系統紀錄</button><button onclick="dSet.close()">取消</button><button class="ok" onclick="saveSettings()">儲存</button></div>
 </dialog>
 
 <script>
@@ -864,7 +870,7 @@ function updTry(){
 }
 setTimeout(updCheck,60000);setInterval(updCheck,30*60000);setInterval(updTry,30000);
 
-// ===== 勤務歷程 =====
+// ===== 系統紀錄（勤務歷程）=====
 // 事件先存在這台電腦（斷網也記得到），再透過中繼站寫進維護者私人雲端硬碟的歷程試算表；電視不記錄
 const LOGQ=KEY+'.logq';
 let logTimer=null,logSending=false;
@@ -880,7 +886,7 @@ function logEvent(cat,msg){
   const d=new Date();
   const e={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),day:dutyKey(d),t:fmtT(d),cat,msg:String(msg),who:nowWho(),dev:'值班台',ver:APP_VER};
   const q=logQ();q.push(e);logSet(q);
-  if(typeof renderHist==='function'&&S.tab==='hist'&&histOff===0)renderHist(false);
+  if(typeof renderHist==='function'&&document.getElementById('dHist')&&document.getElementById('dHist').open&&histOff===0)renderHist(false);
   clearTimeout(logTimer);logTimer=setTimeout(logFlush,3000);
 }
 async function logFlush(){
@@ -1267,10 +1273,11 @@ function autoFitAll(){
 
 // ===== 分頁 =====
 function setTab(t){S.tab=t;save();showTab();}
-// 歷程分頁
+// 系統紀錄（在「設定」裡開啟）
 var histOff=0;const histCache={};var histCat='';
 const HIST_CATS=['出勤','返隊','車輛','動態表','網路','同步','系統','操作'];
 function histDayKey(){const x=dutyDate(new Date());x.setDate(x.getDate()+histOff);return keyOf(x);}
+function openHist(){if(TV)return;histOff=0;histCat='';dHist.showModal();renderHist(true);}
 function histShift(n){histOff=n===0?0:Math.min(0,histOff+n);renderHist(true);}
 function histFilter(c){histCat=histCat===c?'':c;renderHist(false);}
 async function renderHist(fetchIt){
@@ -1295,11 +1302,8 @@ async function renderHist(fetchIt){
   document.getElementById('histBody').innerHTML=ev.length?ev.map(e=>`<tr><td class="ht">${esc(String(e.t).slice(11))}</td><td><span class="htag c-${esc(e.cat)}">${esc(e.cat)}</span></td><td>${esc(e.msg)}${e.pending?' <small class="hp">尚未上傳</small>':''}</td><td class="hw">${esc(e.who)}</td></tr>`).join(''):'<tr><td colspan="4" class="hint" style="padding:14px">這一天沒有紀錄</td></tr>';
 }
 function showTab(){
-  const t=['duty','task','notes','hist'].includes(S.tab)&&!(TV&&S.tab==='hist')?S.tab:'duty';
-  ['actsDuty','viewDay'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=t==='hist'?'none':'';});
-  {const e=document.getElementById('wrapHist');if(e)e.style.display=t==='hist'?'':'none';}
-  if(t==='hist')renderHist(true);
-  [['tabDuty','duty'],['tabTask','task'],['tabNotes','notes'],['tabHist','hist']].forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.className=t===v?'on':'';});
+  const t=['duty','task','notes'].includes(S.tab)?S.tab:'duty';
+  [['tabDuty','duty'],['tabTask','task'],['tabNotes','notes']].forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.className=t===v?'on':'';});
   for(const [id,show] of [['wrapDuty',t==='duty'],['hintDuty',t==='duty'],['wrapTask',t==='task'],['hintTask',t==='task'],['wrapNotes',t==='notes'],['wrapLogs',false]]){
     const e=document.getElementById(id);if(e)e.style.display=show?'':'none';}
   autoFitAll();
