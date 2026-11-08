@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="429f658cfaaf">
+<meta name="build" content="e20a9b203d4a">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -251,6 +251,8 @@ html.tv #wake{display:none}
   background:linear-gradient(90deg,#b3261e,#e8590c);color:#fff;font-size:26px;font-weight:800;box-shadow:0 4px 18px #000a;animation:netBlink 1.4s infinite}
 #netBar[hidden]{display:none}
 #netBar small{font-size:17px;font-weight:600;opacity:.95}
+#netBar .nchk{font-size:15px;font-weight:600;background:#0004;padding:3px 10px;border-radius:6px}
+#netInfo .nchk{font-size:15px;color:#ffb38a}
 #netBar button{font-family:inherit;font-size:17px;font-weight:700;padding:6px 14px;border-radius:8px;border:2px solid #fff;background:#0003;color:#fff;cursor:pointer}
 html.tv #netBar button{display:none}
 @keyframes netBlink{50%{filter:brightness(1.25)}}
@@ -503,6 +505,31 @@ html.tv #pTab .tcol .tr .p .cd{font-size:12px;font-size:min(14px,40cqh)}
 #updBar[hidden]{display:none}
 #updBar button{font-family:inherit;font-size:14px;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #4ea8de;background:#1e6fd9;color:#fff;cursor:pointer}
 html.tv #updBar{display:none}
+/* ===== v1.29 系統紀錄 ===== */
+dialog.histDlg{width:min(1200px,96vw)}
+.histScroll{max-height:62vh;overflow:auto}
+.histBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.histBar b{font-size:18px;min-width:120px;text-align:center}
+.histBar .hc{font-family:inherit;font-size:13px;padding:2px 9px;border-radius:12px;border:1px solid #3a4a6b;background:var(--panel2);color:var(--text);cursor:pointer}
+.histBar .hc.on{border-color:#ffd166;background:#3a3010}
+table.hist{width:100%;border-collapse:collapse;font-size:15px}
+table.hist th{position:sticky;top:0;background:var(--panel2);text-align:left;padding:6px 8px;font-size:14px;color:var(--muted)}
+table.hist td{padding:5px 8px;border-bottom:1px solid #22304d;vertical-align:top}
+table.hist td.ht{font-variant-numeric:tabular-nums;white-space:nowrap;color:#c9d3e6}
+table.hist td.hw{white-space:nowrap;color:var(--muted);font-size:13px}
+.htag{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:10px;background:#2a3550;white-space:nowrap}
+.htag.c-出勤{background:#7a1418;color:#fff}.htag.c-返隊{background:#14532d;color:#d6ffe9}.htag.c-車輛{background:#3a3010;color:#ffe9a8}
+.htag.c-動態表{background:#14304f;color:#d6ebff}.htag.c-網路{background:#5a2a0c;color:#ffd8b0}.htag.c-同步{background:#3b2a5a;color:#e6d6ff}
+.htag.c-系統{background:#2a3550;color:#c9d3e6}.htag.c-操作{background:#2f3b2a;color:#dfe9d6}
+table.hist small.hp{color:#ffb347}
+/* ===== v1.29 斷網提示視窗 ===== */
+dialog.netDlg[open]{position:fixed;inset:0;margin:auto;height:fit-content;z-index:10001}
+dialog.netDlg{width:min(640px,92vw);border:2px solid #e8590c;box-shadow:0 0 0 9999px #0008,0 10px 40px #000c}
+dialog.netDlg h3{color:#ffb38a;font-size:24px}
+#netInfo{font-size:18px;line-height:1.6;margin-bottom:8px}
+#netInfo b{color:#ffd166}
+.netBox{background:var(--panel2);border-radius:8px;padding:8px 12px;margin-top:8px;font-size:15px;line-height:1.7}
+.netBox b{display:block;color:#cfd8ea;margin-bottom:2px}
 </style>
 </head>
 <body>
@@ -510,7 +537,7 @@ html.tv #updBar{display:none}
 <header>
   <div class="logo">🚒</div>
   <div>
-    <div id="unit" contenteditable="true" spellcheck="false" title="點擊可修改分隊名稱"></div>
+    <div id="unit" spellcheck="false"></div>
     <div class="hint" id="appSub">消防勤務看板 · 值班台</div>
   </div>
   <div class="leader" onclick="openLeader()" title="點擊可手動指定帶隊官">
@@ -554,7 +581,7 @@ html.tv #updBar{display:none}
     <section id="pDuty" class="panel">
       <h2><span class="tabs"><button id="tabDuty" onclick="setTab('duty')">📋 今日勤務表</button><button id="tabTask" onclick="setTab('task')">🔥 火警任務編組</button><button id="tabNotes" onclick="setTab('notes')">📝 交接事項</button><button id="tabLogs" onclick="setTab('logs')" style="display:none">出勤紀錄</button></span>
         <span id="viewDay" class="hint"></span>
-        <span class="acts">
+        <span class="acts" id="actsDuty">
           <button class="act" onclick="shiftView(-1)">◀ 前一天</button>
           <button class="act" onclick="shiftView(0)">今天</button>
           <button class="act" onclick="shiftView(1)">後一天 ▶</button>
@@ -698,6 +725,39 @@ html.tv #updBar{display:none}
   <div class="dbtns"><button style="margin-right:auto" onclick="dDynDiff.close()">先不處理</button><button onclick="dDynDiff.close();openDyn()">以看板為準（覆蓋動態表）</button><button class="ok" id="ddAdopt" onclick="adoptDyn()">以動態表為準（更新看板）</button></div>
 </dialog>
 
+<!-- 斷網提示 -->
+<dialog id="dNet" class="netDlg">
+  <h3>⚠ 網路已中斷</h3>
+  <div id="netInfo"></div>
+  <div class="netBox"><b>目前影響</b>
+    <div>・看板資料暫停更新（勤務表、電視同步、派遣科動態表）</div>
+    <div>・出勤、返隊照常操作，看板會先記住，恢復後自動補上</div>
+    <div>・若有出勤，請記得之後確認派遣科動態表是否正確</div></div>
+  <div class="netBox"><b>處理方式</b>
+    <div id="netStep1">1. 按「🔑 開啟登入頁」，輸入員工編號重新登入</div>
+    <div>2. 回到看板，按「重新檢查」</div>
+    <div>3. 仍無法連線 → 檢查網路線，或通報資訊人員</div></div>
+  <div class="dbtns"><button style="margin-right:auto" onclick="netSnoozeNow()">5 分鐘後再提醒</button><button onclick="netManual(this)">重新檢查</button><button class="ok" id="netLoginBtn" onclick="window.open(NET_LOGIN,'_blank')">🔑 開啟登入頁</button></div>
+</dialog>
+
+<!-- 管理密碼 -->
+<dialog id="dAdmin">
+  <h3>🔒 需要管理密碼</h3>
+  <div class="hint" style="margin-bottom:8px" id="admWhat">這個功能只開放給管理人員。</div>
+  <input id="admPw" type="password" autocomplete="off" placeholder="請輸入管理密碼" onkeydown="if(event.key==='Enter'){event.preventDefault();adminVerify();}">
+  <div id="admMsg" style="margin-top:8px;min-height:20px"></div>
+  <div class="dbtns"><button onclick="dAdmin.close()">取消</button><button class="ok" id="admOk" onclick="adminVerify()">確認</button></div>
+</dialog>
+
+<!-- 系統紀錄 -->
+<dialog id="dHist" class="wide histDlg">
+  <h3>📜 系統紀錄</h3>
+  <div class="histBar"><button class="act" onclick="histShift(-1)">◀ 前一天</button><b id="histDay"></b><button class="act" onclick="histShift(1)">後一天 ▶</button><button class="act" onclick="histShift(0)">今天</button><span id="histCats"></span><span id="histMsg" class="hint"></span></div>
+  <div class="histScroll"><table class="hist"><thead><tr><th>時間</th><th>類別</th><th>內容</th><th>時段值班</th></tr></thead><tbody id="histBody"></tbody></table></div>
+  <div class="hint" style="margin-top:6px">勤務日以 08:00 為一天開始；「時段值班」依勤務表推定。</div>
+  <div class="dbtns"><button onclick="dHist.close()">關閉</button></div>
+</dialog>
+
 <!-- 設定 -->
 <dialog id="dSet">
   <h3>⚙ 設定</h3>
@@ -710,6 +770,15 @@ html.tv #updBar{display:none}
   <div class="row2"><div><label>動態表「火警」列平常的出動車輛</label><input id="sDynFire"></div><div><label>動態表「救護」列平常的出動車輛</label><input id="sDynEms"></div></div>
   <label>即時同步網址（Google Apps Script，讓電視與值班台同步）</label><input id="sSync" placeholder="https://script.google.com/macros/s/……/exec">
   <label>同步寫入密碼（只有值班台需要填；電視不用填）</label><input id="sKey" type="password" autocomplete="off">
+  <label style="display:flex;gap:8px;align-items:center;color:var(--text)"><input id="sKeyClr" type="checkbox" style="width:auto">清除這台電腦的同步寫入密碼</label>
+  <label>看板顯示的分隊名稱</label><input id="sUnit">
+  <label>斷網提示音（叮—咚，只響一次）</label>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <label style="display:flex;gap:6px;align-items:center;color:var(--text);margin:0"><input id="sChime" type="checkbox" style="width:auto">開啟提示音</label>
+    <label style="display:flex;gap:6px;align-items:center;color:var(--text);margin:0"><input id="sQuiet" type="checkbox" style="width:auto">夜間靜音</label>
+    <input id="sQFrom" type="number" min="0" max="23" style="width:64px"> 點 ～ <input id="sQTo" type="number" min="0" max="23" style="width:64px"> 點
+    <button type="button" class="act" onclick="audioUnlock();setTimeout(()=>chime(true),50)">▶ 試聽</button>
+  </div>
   <label>電視畫面（會透過即時同步套用到電視，約 15 秒內生效）</label>
   <div class="row2">
     <div><label style="margin-top:0">縮放比例（0＝自動；例：0.9＝90%）</label><input id="sTvScale" type="number" step="0.05" min="0" max="3"></div>
@@ -735,7 +804,7 @@ html.tv #updBar{display:none}
     <button onclick="document.getElementById('bak').click()">⬆ 匯入備份</button>
   </div>
   <input type="file" id="bak" accept=".json" style="display:none" onchange="importData(this)">
-  <div class="dbtns"><button onclick="dSet.close()">取消</button><button class="ok" onclick="saveSettings()">儲存</button></div>
+  <div class="dbtns"><button style="margin-right:auto" onclick="dSet.close();openHist()">📜 系統紀錄</button><button onclick="dSet.close()">取消</button><button class="ok" onclick="saveSettings()">儲存</button></div>
 </dialog>
 
 <script>
@@ -812,7 +881,9 @@ async function keepAwake(){
   }
   wakeShow();
 }
+let wakePrev=null;
 function wakeShow(){const el=document.getElementById('wake');if(!el)return;
+  const on=!!wakeLock;if(wakePrev!==null&&on!==wakePrev&&!TV)logEvent('系統',on?'防螢幕保護恢復啟用':'防螢幕保護失效（'+(wakeMsg||'看板不在前景')+'）');wakePrev=on;
   if(wakeLock){el.className='on';el.textContent='🔆 防螢幕保護：啟用';el.title='看板在前景時不會進入螢幕保護';}
   else{el.className='off';el.textContent='⚠ 防螢幕保護未啟用';el.title=(wakeMsg||'')+'（點一下重試）';el.onclick=keepAwake;}}
 document.addEventListener('visibilitychange',keepAwake);
@@ -823,7 +894,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.28';   // 版本號：每次發布時更新
+const APP_VER='v1.29';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -839,9 +910,60 @@ function updTry(){
   if(!updNew)return;
   const busy=document.querySelector('dialog[open]')||Date.now()-lastInput<5*60000||
     (document.activeElement&&/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName));
-  if(!busy)hardReload();
+  if(!busy){logEvent('系統','偵測到新版本，閒置時自動更新（原版本 '+APP_VER+'）');hardReload();}
 }
 setTimeout(updCheck,60000);setInterval(updCheck,30*60000);setInterval(updTry,30000);
+
+// ===== 系統紀錄（勤務歷程）=====
+// 事件先存在這台電腦（斷網也記得到），再透過中繼站寫進維護者私人雲端硬碟的歷程試算表；電視不記錄
+const LOGQ=KEY+'.logq';
+let logTimer=null,logSending=false;
+function logQ(){try{return JSON.parse(localStorage.getItem(LOGQ))||[];}catch(e){return [];}}
+function logSet(q){try{localStorage.setItem(LOGQ,JSON.stringify(q.slice(-3000)));}catch(e){}}
+function fmtT(d){return d.getFullYear()+'/'+pad(d.getMonth()+1)+'/'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());}
+function nowWho(){   // 依勤務表推定目前時段的值班人員
+  try{const d=new Date(),k=dutyKey(d),sc=S.sched[k],slot=sc&&sc.slots.length?sc.slots[curSlot(sc,d)]:null;
+    return (slot?(slot.cells['值班']||[]):[]).map(n=>fmtNo(k,stripNo(n))).join('、');}catch(e){return '';}
+}
+function logEvent(cat,msg){
+  if(TV)return;
+  const d=new Date();
+  const e={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),day:dutyKey(d),t:fmtT(d),cat,msg:String(msg),who:nowWho(),dev:'值班台',ver:APP_VER};
+  const q=logQ();q.push(e);logSet(q);
+  if(typeof renderHist==='function'&&document.getElementById('dHist')&&document.getElementById('dHist').open&&histOff===0)renderHist(false);
+  clearTimeout(logTimer);logTimer=setTimeout(logFlush,3000);
+}
+async function logFlush(){
+  if(TV||logSending)return;
+  const key=localStorage.getItem(KEY+'.key')||'';if(!key||!S.liveUrl||stageBlocked(S.liveUrl))return;
+  let q=logQ();if(!q.length)return;
+  logSending=true;
+  try{
+    for(let round=0;round<30&&q.length;round++){
+      const batch=[];let len=0;
+      for(const e of q){const n=encodeURIComponent(JSON.stringify(e)).length;if(batch.length&&(len+n>1500||batch.length>=10))break;batch.push(e);len+=n;}
+      const res=await jsonp(S.liveUrl,{action:'logadd',key,e:JSON.stringify(batch)},20000);
+      if(!res||!res.ok)break;                          // 失敗就留著下次再送
+      const done=new Set(res.done||[]);if(!batch.some(e=>done.has(e.id)))break;
+      q=logQ().filter(e=>!done.has(e.id));logSet(q);
+    }
+  }finally{logSending=false;}
+}
+setInterval(logFlush,60000);
+
+// ===== 斷網提示音（叮—咚，只響一次；夜間靜音）=====
+let audioCtx=null;
+function audioUnlock(){try{if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();}catch(e){}}
+addEventListener('pointerdown',audioUnlock,true);addEventListener('keydown',audioUnlock,true);
+function inQuiet(){const f=S.quietFrom??22,t=S.quietTo??6,h=new Date().getHours();if(S.quietOn===false||f===t)return false;return f<t?(h>=f&&h<t):(h>=f||h<t);}
+function chime(force){
+  if(TV)return;if(!force&&(S.netChime===false||inQuiet()))return;
+  try{audioUnlock();const c=audioCtx;if(!c||c.state!=='running')return;
+    [[880,0],[660,0.55]].forEach(([f,at])=>{const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f;
+      const t0=c.currentTime+at;g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(0.25,t0+0.03);g.gain.exponentialRampToValueAtTime(0.0001,t0+0.9);
+      o.connect(g).connect(c.destination);o.start(t0);o.stop(t0+0.95);});
+  }catch(e){}
+}
 
 // ===== 網路斷線偵測 =====
 // 每 30 秒向看板網站送一個很小的請求；連續 2 次失敗（約 1 分鐘）就顯示提示列，恢復後自動消失並立即重新同步
@@ -853,18 +975,41 @@ async function netCheck(){
   try{const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),8000);
     const r=await fetch(location.pathname+'?ping='+_Date.now(),{method:'HEAD',cache:'no-store',signal:ac.signal});
     clearTimeout(tm);ok=r.ok||r.status===304;}catch(e){ok=false;}
-  if(ok){netOkAt=Date.now();netFail=0;if(netDown){netDown=false;netShow();
-      try{toast('✔ 網路已恢復，重新同步中…');const b=document.querySelector('#toast button');if(b)b.style.display='none';}catch(e){}
+  if(ok){const wasDown=netDown,last=netOkAt;netOkAt=Date.now();netFail=0;if(netDown){netDown=false;netShow();
+      if(wasDown)logEvent('網路',`網路恢復（中斷約 ${Math.max(1,Math.round((Date.now()-last)/60000))} 分鐘）`);logFlush();
+      try{toast(`✔ 網路已恢復（中斷約 ${Math.max(1,Math.round((Date.now()-last)/60000))} 分鐘），重新同步中…`);const b=document.querySelector('#toast button');if(b)b.style.display='none';}catch(e){}
       try{syncOnline(false);}catch(e){} try{livePull();}catch(e){} try{syncClock();}catch(e){}}}
-  else{netFail++;if(netFail>=2&&!netDown){netDown=true;netShow();}else if(netDown)netShow();}
+  else{netFail++;if(netFail>=2&&!netDown){netDown=true;netShow();const t=new Date(netOkAt);logEvent('網路',`網路中斷（最後連線 ${pad(t.getHours())}:${pad(t.getMinutes())}）`);}else if(netDown)netShow();}
 }
+let netSnooze=0,netCheckMsg='';
+// 手動「重新檢查」：顯示檢查中，結果寫在提示列與視窗上
+async function netManual(btn){
+  if(btn){btn.disabled=true;btn.textContent='檢查中…';}
+  await netCheck();
+  const t=new Date();netCheckMsg=netDown?`${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())} 檢查：仍無法連線`:'';
+  if(btn){btn.disabled=false;btn.textContent='重新檢查';}
+  netShow();
+}
+function netSnoozeNow(){netSnooze=Date.now()+5*60000;dNet.close();}
+function netDlgShow(){   // 值班台：斷網時跳出視窗（電視只顯示上方提示列）
+  const d=document.getElementById('dNet');if(TV||!d)return;
+  if(!netDown){netCheckMsg='';if(d.open)d.close();return;}
+  const t=new Date(netOkAt),hm=pad(t.getHours())+':'+pad(t.getMinutes()),mins=Math.max(1,Math.round((Date.now()-netOkAt)/60000));
+  const off=navigator.onLine===false;
+  document.getElementById('netInfo').innerHTML=`中斷時間：<b>${hm}</b>（已中斷 <b id="netMins">${mins}</b> 分鐘）<br>可能原因：${off?'網路線或 Wi-Fi 中斷':'分隊網路已登出，需要重新登入員工編號（或網路線／Wi-Fi 中斷）'}`+(netCheckMsg?`<div class="nchk">${netCheckMsg}</div>`:'');
+  document.getElementById('netStep1').textContent=off?'1. 檢查網路線是否鬆脫，或 Wi-Fi 是否連上':'1. 按「🔑 開啟登入頁」，輸入員工編號重新登入';
+  document.getElementById('netLoginBtn').style.display=off?'none':'';
+  if(!d.open&&Date.now()>=netSnooze){d.show();chime();}
+}
+setInterval(()=>{const e=document.getElementById('netMins');if(e&&netDown)e.textContent=Math.max(1,Math.round((Date.now()-netOkAt)/60000));},15000);
 function netShow(){const el=document.getElementById('netBar');if(!el)return;
+  netDlgShow();
   if(!netDown){el.hidden=true;return;}
   const t=new Date(netOkAt),hm=pad(t.getHours())+':'+pad(t.getMinutes());
   const off=navigator.onLine===false;
   const msg=TV?'電視網路已中斷':off?'網路線／Wi-Fi 已中斷':'網路已中斷，可能需要重新登入員工編號';
   el.innerHTML=`⚠ ${msg}<small>（最後連線 ${hm}，畫面資料可能不是最新）</small>`+
-    (TV?'':`${off?'':`<button onclick="window.open(NET_LOGIN,'_blank')">🔑 開啟登入頁</button>`}<button onclick="netCheck()">重新檢查</button>`);
+    (TV?'':`${off?'':`<button onclick="window.open(NET_LOGIN,'_blank')">🔑 開啟登入頁</button>`}<button onclick="netManual(this)">重新檢查</button>`)+(netCheckMsg?`<small class="nchk">${netCheckMsg}</small>`:'');
   el.hidden=false;}
 window.addEventListener('offline',()=>{netFail=1;netCheck();});
 window.addEventListener('online',()=>netCheck());
@@ -966,6 +1111,7 @@ const SHARED=['dynMode','dynAt','dynFire','dynEms','lowStaff','vol','awayCols','
 let lastShared='',applyingRemote=false,livePulled=false,pushTimer=null,liveState='',liveAt=0;
 function sharedJson(){const o={};SHARED.forEach(k=>o[k]=S[k]);return JSON.stringify(o);}
 function liveShow(st,msg){
+  if(!TV&&S.liveUrl){if(st==='err'&&liveState!=='err')logEvent('同步','即時同步中斷'+(msg?'：'+msg:''));else if(st==='ok'&&liveState==='err')logEvent('同步','即時同步恢復');}
   liveState=st;const el=document.getElementById('live');if(!el)return;
   if(!S.liveUrl){el.textContent='';return;}
   const t=liveAt?new Date(liveAt):null;
@@ -1178,7 +1324,8 @@ function renderDuty(){
   el.querySelectorAll('td.ed').forEach(td=>td.addEventListener('click',()=>openPick(k,+td.dataset.r,+td.dataset.c)));
   if(isToday)el.querySelector('tr.cur')?.scrollIntoView({block:'center'});
 }
-function clearTable(){const k=keyOf(viewDate());if(confirm(`確定清空 ${rocDate(viewDate())} 的班表？`)){S.table[k]=[];save();renderDuty();renderNow();}}
+function clearTable(){requireAdmin('清空此日班表',clearTable0);}
+function clearTable0(){const k=keyOf(viewDate());if(confirm(`確定清空 ${rocDate(viewDate())} 的班表？`)){S.table[k]=[];logEvent('操作',`清空 ${rocDate(viewDate())} 的班表`);save();renderDuty();renderNow();}}
 
 // ===== 字卡自動調整大小：先用放大後的字級，若有字卡放不下就逐步縮小，確保不超出、不換行、不截斷 =====
 function fitOver(root,mode){
@@ -1207,6 +1354,34 @@ function autoFitAll(){
 
 // ===== 分頁 =====
 function setTab(t){S.tab=t;save();showTab();}
+// 系統紀錄（在「設定」裡開啟）
+var histOff=0;const histCache={};var histCat='';
+const HIST_CATS=['出勤','返隊','車輛','動態表','網路','同步','系統','操作'];
+function histDayKey(){const x=dutyDate(new Date());x.setDate(x.getDate()+histOff);return keyOf(x);}
+function openHist(){if(TV)return;histOff=0;histCat='';dHist.showModal();renderHist(true);}
+function histShift(n){histOff=n===0?0:Math.min(0,histOff+n);renderHist(true);}
+function histFilter(c){histCat=histCat===c?'':c;renderHist(false);}
+async function renderHist(fetchIt){
+  const k=histDayKey(),[y,m,d]=k.split('-').map(Number),msg=document.getElementById('histMsg');
+  document.getElementById('histDay').textContent=`${y-1911}/${m}/${d}${histOff===0?'（今天）':''}`;
+  if(fetchIt&&!TV){
+    const key=localStorage.getItem(KEY+'.key')||'';
+    if(key&&S.liveUrl&&!stageBlocked(S.liveUrl)){
+      msg.textContent='讀取中…';
+      const res=await jsonp(S.liveUrl,{action:'logread',key,day:k},20000);
+      if(res&&res.ok){histCache[k]=res.events||[];msg.textContent='';}
+      else msg.textContent='⚠ 無法讀取雲端歷程'+(res&&res.error?'（'+res.error+'）':'')+'，以下只顯示這台電腦尚未上傳的事件';
+      if(histDayKey()!==k)return;
+    }else msg.textContent='這台電腦沒有同步密碼，只顯示本機事件';
+  }
+  const pend=logQ().filter(e=>e.day===k),ids=new Set((histCache[k]||[]).map(e=>e.id));
+  let ev=[...(histCache[k]||[]),...pend.filter(e=>!ids.has(e.id)).map(e=>({...e,pending:1}))];
+  ev.sort((a,b)=>a.t<b.t?1:a.t>b.t?-1:0);
+  const cnt={};ev.forEach(e=>cnt[e.cat]=(cnt[e.cat]||0)+1);
+  document.getElementById('histCats').innerHTML=HIST_CATS.filter(c=>cnt[c]).map(c=>`<button class="hc ${histCat===c?'on':''} c-${c}" onclick="histFilter('${c}')">${c} ${cnt[c]}</button>`).join('');
+  if(histCat)ev=ev.filter(e=>e.cat===histCat);
+  document.getElementById('histBody').innerHTML=ev.length?ev.map(e=>`<tr><td class="ht">${esc(String(e.t).slice(11))}</td><td><span class="htag c-${esc(e.cat)}">${esc(e.cat)}</span></td><td>${esc(e.msg)}${e.pending?' <small class="hp">尚未上傳</small>':''}</td><td class="hw">${esc(e.who)}</td></tr>`).join(''):'<tr><td colspan="4" class="hint" style="padding:14px">這一天沒有紀錄</td></tr>';
+}
 function showTab(){
   const t=['duty','task','notes'].includes(S.tab)?S.tab:'duty';
   [['tabDuty','duty'],['tabTask','task'],['tabNotes','notes']].forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.className=t===v?'on':'';});
@@ -1394,8 +1569,8 @@ function openLeader(){
   document.getElementById('ldNight').innerHTML=opts(ov.night&&ld.night);
   dLeader.showModal();
 }
-function saveLeader(){S.leaderOv[dutyKey(new Date())]={day:document.getElementById('ldDay').value,night:document.getElementById('ldNight').value};save();renderLeader();renderHead();dLeader.close();}
-function resetLeader(){delete S.leaderOv[dutyKey(new Date())];save();renderLeader();renderHead();dLeader.close();}
+function saveLeader(){S.leaderOv[dutyKey(new Date())]={day:document.getElementById('ldDay').value,night:document.getElementById('ldNight').value};logEvent('操作',`手動指定帶隊官：白天 ${document.getElementById('ldDay').value||'—'}、夜間 ${document.getElementById('ldNight').value||'—'}`);save();renderLeader();renderHead();dLeader.close();}
+function resetLeader(){logEvent('操作','帶隊官恢復自動判斷');delete S.leaderOv[dutyKey(new Date())];save();renderLeader();renderHead();dLeader.close();}
 
 // ===== 讀取輪休表 =====
 const ON_TAGS=['訓','T2',"T'2",'龍','搜','演','週'];
@@ -1488,7 +1663,10 @@ function applyImport(){if(!parsedRot)return;if(Object.keys(parsedRot.days).lengt
 // ===== 線上同步 Google 試算表 =====
 let syncing=false,syncErr='';
 function sheetId(){const m=String(S.sheetUrl||'').match(/\/d\/([\w-]{20,})/);return m?m[1]:'';}
+let syncPrev='';
 function syncShow(st){
+  if(st==='err'&&syncPrev!=='err')logEvent('同步','輪休表／勤務表讀取失敗：'+(syncErr||''));else if(st==='ok'&&syncPrev==='err')logEvent('同步','輪休表／勤務表讀取恢復');
+  if(st==='ok'||st==='err')syncPrev=st;
   const el=document.getElementById('sync');if(!el)return;
   const t=S.syncAt?new Date(S.syncAt):null,tt=t?`${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}`:'';
   el.className=st;
@@ -1611,7 +1789,7 @@ function volOf(k){return (S.vol&&S.vol[k])||[];}
 function addVol(){
   const n=(prompt('請輸入協勤志工姓名（多位請用空白或頓號分開）')||'').split(/[、,，\s]+/).map(x=>x.trim()).filter(Boolean);
   if(!n.length)return;
-  const k=dutyKey(new Date());S.vol=S.vol||{};S.vol[k]=[...new Set([...volOf(k),...n])];
+  const k=dutyKey(new Date());S.vol=S.vol||{};S.vol[k]=[...new Set([...volOf(k),...n])];logEvent('操作','新增志工：'+n.join('、'));
   // 只保留 7 天
   Object.keys(S.vol).forEach(kk=>{const [a,b,c]=kk.split('-').map(Number);if(new Date(a,b-1,c)<Date.now()-7*864e5)delete S.vol[kk];});
   save();renderNow();renderCars();
@@ -1619,7 +1797,7 @@ function addVol(){
 function delVol(name){
   if(TV)return;
   if(!confirm(`志工「${name}」協勤結束，要移除嗎？`))return;
-  const k=dutyKey(new Date());S.vol[k]=volOf(k).filter(x=>x!==name);save();renderNow();renderCars();
+  const k=dutyKey(new Date());S.vol[k]=volOf(k).filter(x=>x!==name);logEvent('操作','志工協勤結束：'+name);save();renderNow();renderCars();
 }
 function volCard(){
   const v=volOf(dutyKey(new Date()));if(!v.length)return '';
@@ -1799,7 +1977,7 @@ function openCar(i){
 function setCar(s){
   const v=S.vehicles[carIdx];
   if(s==='出勤中'&&v.status!=='出勤中'){dCar.close();openDispatch([v.name]);return;}
-  if(v.status!==s){v.status=s;v.since=Date.now();}
+  if(v.status!==s){logEvent('車輛',`${v.name}：${v.status} → ${s}`+(v.case&&(v.status==='出勤中'||v.status==='返隊中')?`（${v.case}，出勤 ${dur(Date.now()-v.since)}）`:''));v.status=s;v.since=Date.now();}
   if(s==='在隊'||s==='保養'||s==='送修'){delete v.case;delete v.crewN;delete v.grp;delete v.crewNames;}
   dCar.close();afterCarChange();
 }
@@ -1894,6 +2072,8 @@ function saveDispatch(){
   const now=Date.now(),grp=now;   // 同一次出動的車輛共用編號，動態表會合併成一列
   cars.forEach(n=>{const v=carBy(n);v.status='出勤中';v.since=now;v.case=type;v.crewN=dp.sel[n];v.grp=grp;v.crewNames=[...(dp.crew[n]||[])];});
   dDisp.close();afterCarChange();
+  const k=dutyKey(new Date());
+  logEvent('出勤',`${type}：`+cars.map(n=>{const v=carBy(n);return n+((v.crewNames||[]).length?'（'+v.crewNames.map(x=>fmtNo(k,x)).join('、')+'）':'（'+(v.crewN||0)+' 人）');}).join('、'));
 }
 
 // ===== 出勤中列表與返隊 =====
@@ -1923,26 +2103,30 @@ function toast(msg){
   t.innerHTML=`<span>${msg}</span><button onclick="undoLast()">復原</button>`;t.style.display='flex';
   clearTimeout(toastTimer);toastTimer=setTimeout(()=>{t.style.display='none';undoSnap=null;},10000);
 }
-function undoLast(){if(!undoSnap)return;S.vehicles=JSON.parse(undoSnap);undoSnap=null;document.getElementById('toast').style.display='none';afterCarChange();}
+function undoLast(){if(!undoSnap)return;logEvent('車輛','復原上一步車輛操作');S.vehicles=JSON.parse(undoSnap);undoSnap=null;document.getElementById('toast').style.display='none';afterCarChange();}
 function afterCarChange(){save();renderCars();renderHead();dynAutoSoon();}
 function returnCars(gid,kind){
   undoSnap=snapCars();
   const g=outGroups().find(x=>String(x.id)===String(gid));if(!g)return;
   const list=g.cars.filter(v=>kind==='all'||(kind==='fire'&&v.type==='水箱車')||(kind==='ems'&&v.type==='救護車'));
+  const rmsg=list.map(v=>`${v.name}（${v.case||'出勤'}，出勤 ${dur(Date.now()-v.since)}）`).join('、');
   list.forEach(v=>{v.status='在隊';v.since=Date.now();delete v.case;delete v.crewN;delete v.grp;delete v.crewNames;});
-  afterCarChange();toast(`${list.map(v=>v.name).join('+')} 已返隊`);
+  afterCarChange();logEvent('返隊',rmsg);toast(`${list.map(v=>v.name).join('+')} 已返隊`);
 }
 function quickEms(){
   const v=['91','92'].map(carBy).find(x=>x&&x.status==='在隊')||S.vehicles.find(x=>x.type==='救護車'&&x.status==='在隊');
   if(!v){alert('目前沒有在隊的救護車');return;}
   undoSnap=snapCars();
   const now=Date.now();v.status='出勤中';v.since=now;v.case='救護';v.crewN=v.seats||2;v.grp=now;
-  afterCarChange();toast(`🚑 ${v.name} 救護出勤（${v.crewN} 人）`);
+  afterCarChange();logEvent('出勤',`救護：${v.name}（${v.crewN} 人，一鍵救護出勤）`);toast(`🚑 ${v.name} 救護出勤（${v.crewN} 人）`);
 }
 
 // ===== 動態表自動同步 =====
 const dynKeyOf=p=>p?JSON.stringify({...p,slot:undefined}):'';
-let dynBusy=false,dynWait=0,dynTimer=null,dynWroteAt=0;
+let dynBusy=false,dynWait=0,dynTimer=null,dynWroteAt=0,dynErrLogged=false;
+// 歷程用的動態表內容摘要
+function dynBrief(p){const out=(p.rows||[]).filter(r=>r.veh&&r.n!=='').map(r=>`${r.item} ${r.veh}（${r.n} 人）`);
+  return `待命 ${(p.standby||[]).filter(Boolean).join('、')||'無'}`+((p.stopped||[]).filter(Boolean).length?`；報停 ${p.stopped.filter(Boolean).join('、')}`:'')+(out.length?`；出勤 ${out.join('、')}`:'');}
 function dynAutoSoon(){if(TV)return;clearTimeout(dynTimer);dynTimer=setTimeout(()=>dynAuto(),1500);}
 function dynAuto(){
   if(TV||S.dynMode!=='auto'||dynBusy||S.dynConflict||Date.now()<dynWait)return;
@@ -1953,9 +2137,9 @@ function dynAuto(){
   dynBusy=true;dynShow('ing');
   dynSend(p,false).then(res=>{
     dynBusy=false;dynWroteAt=Date.now();
-    if(res.ok){S.dynLast=p;S.dynAt=S.dynCheckAt=Date.now();S.dynConflict='';S.dynDiff=null;save();dynShow();}
+    if(res.ok){S.dynLast=p;S.dynAt=S.dynCheckAt=Date.now();S.dynConflict='';S.dynDiff=null;dynErrLogged=false;save();dynShow();logEvent('動態表','自動寫入動態表：'+dynBrief(p));}
     else if(res.conflict){S.dynConflict=res.error||'動態表有人工修改';if(res.block)dynGotBlock(res.block);save();dynShow();}
-    else{dynWait=Date.now()+60000;dynShow('err',res.error);}
+    else{dynWait=Date.now()+60000;dynShow('err',res.error);if(!dynErrLogged){dynErrLogged=true;logEvent('動態表','動態表寫入失敗：'+(res.error||''));}}
   });
 }
 // 傳送到 Apps Script；force=true 為手動同步（以看板為準覆蓋）
@@ -2026,8 +2210,8 @@ function writeDyn(){
   dynSend(p,true).then(res=>{
     btn.disabled=false;
     dynWroteAt=Date.now();
-    if(res.ok){m.className='ok';m.textContent='✔ 已寫入動態表';S.dynLast=p;S.dynAt=S.dynCheckAt=Date.now();S.dynConflict='';S.dynDiff=null;save();dynShow();setTimeout(()=>dDyn.close(),1200);}
-    else{m.className='err';m.textContent='寫入失敗：'+(res.error||'未知錯誤');}
+    if(res.ok){logEvent('動態表','手動同步（以看板為準）寫入動態表：'+dynBrief(p));m.className='ok';m.textContent='✔ 已寫入動態表';S.dynLast=p;S.dynAt=S.dynCheckAt=Date.now();S.dynConflict='';S.dynDiff=null;save();dynShow();setTimeout(()=>dDyn.close(),1200);}
+    else{m.className='err';m.textContent='寫入失敗：'+(res.error||'未知錯誤');logEvent('動態表','手動同步失敗：'+(res.error||''));}
   });
 }
 // ===== 讀取動態表：發現人工修改（B）=====
@@ -2082,8 +2266,10 @@ function dynRead(){
 function dynGotBlock(block){
   S.dynReadAt=Date.now();
   const manual=!S.dynLast||!sameBlock(block,dynBlockOf(S.dynLast));
-  if(!manual){S.dynDiff=null;if(S.dynConflict==='動態表中山區塊有人工修改')S.dynConflict='';save();dynShow();return;}   // 動態表已和看板最後寫入的一致 → 恢復自動同步
+  if(!manual){if(S.dynDiff)logEvent('動態表','動態表已與看板一致，恢復自動同步');S.dynDiff=null;if(S.dynConflict==='動態表中山區塊有人工修改')S.dynConflict='';save();dynShow();return;}   // 動態表已和看板最後寫入的一致 → 恢復自動同步
   const d=dynDiffOf(block);d.block=block;d.at=Date.now();
+  const sig=JSON.stringify([d.cars,d.fields]);
+  if(!S.dynDiff||JSON.stringify([S.dynDiff.cars,S.dynDiff.fields])!==sig)logEvent('動態表','偵測到動態表人工修改：'+(d.cars.map(x=>`${x.name}（動態表${x.sheet==='出勤'&&x.item?x.item:x.sheet}／看板${x.board}）`).concat(d.fields.map(f=>`${f[0]}（動態表 ${f[1]||'空白'}／看板 ${f[2]||'空白'}）`)).join('、')||'其他欄位'));
   S.dynDiff=d;
   if(S.dynMode==='auto'&&S.dynLast&&!S.dynConflict)S.dynConflict='動態表中山區塊有人工修改';
   save();dynShow();
@@ -2115,6 +2301,7 @@ function adoptDyn(){
       v.crewN=n&&cars.length?Math.round(n/cars.length):(v.seats||0);
     }
   });
+  logEvent('動態表','選擇「以動態表為準」更新看板：'+d.cars.map(x=>`${x.name} → ${x.sheet==='出勤'?(x.item||'出勤'):x.sheet}`).join('、'));
   S.dynLast=payloadOfBlock(b);S.dynConflict='';S.dynDiff=null;
   dDynDiff.close();afterCarChange();toast('✔ 已依動態表更新看板車輛');
 }
@@ -2174,7 +2361,29 @@ function renderStats(){
 }
 
 // ===== 設定 =====
-function openSettings(){
+// ===== 管理密碼（設定、清空班表需要）=====
+// 密碼存在中繼站（Apps Script），看板只把輸入的密碼送去核對；通過後 10 分鐘內有效，關閉設定視窗即重新上鎖
+let adminUntil=0,adminNext=null;
+function requireAdmin(what,cb){
+  if(TV)return;
+  if(!S.liveUrl||Date.now()<adminUntil){cb();return;}   // 尚未設定中繼站（第一次安裝）時不擋
+  adminNext=cb;document.getElementById('admWhat').textContent=`「${what}」只開放給管理人員，請輸入管理密碼。`;
+  document.getElementById('admPw').value='';document.getElementById('admMsg').textContent='';document.getElementById('admMsg').className='';
+  document.getElementById('admOk').disabled=false;dAdmin.showModal();setTimeout(()=>document.getElementById('admPw').focus(),50);
+}
+async function adminVerify(){
+  const pw=document.getElementById('admPw').value,m=document.getElementById('admMsg'),btn=document.getElementById('admOk');
+  if(!pw){m.className='err';m.textContent='請輸入管理密碼';return;}
+  btn.disabled=true;m.className='';m.textContent='驗證中…';
+  const res=await jsonp(S.liveUrl,{action:'admin',pw},15000);btn.disabled=false;
+  if(res&&res.ok){adminUntil=Date.now()+10*60000;logEvent('操作','管理密碼驗證成功');dAdmin.close();const cb=adminNext;adminNext=null;if(cb)cb();return;}
+  m.className='err';
+  if(res&&res.ok===undefined&&'data' in res)m.textContent='中繼站尚未更新，無法驗證管理密碼。';
+  else if(res&&/無法連線|逾時/.test(res.error||''))m.textContent='目前無法連線，網路中斷時無法驗證管理密碼。';
+  else{m.textContent=(res&&res.error)||'驗證失敗';logEvent('操作','管理密碼驗證失敗'+(res&&res.locked?'（錯誤次數過多，暫停 10 分鐘）':''));}
+}
+function openSettings(){requireAdmin('設定',openSettings0);}
+function openSettings0(){
   document.getElementById('sCars').value=S.vehicles.map(v=>[v.type,v.name,v.note||'',v.crew||'',v.seats??''].join(',')).join('\n');
   document.getElementById('sDuties').value=S.duties.join('，');
   document.getElementById('sAway').value=(S.awayCols||[]).join('，');
@@ -2189,7 +2398,11 @@ function openSettings(){
   document.getElementById('sFit').checked=S.pcFit!==false;
   document.getElementById('sSync').value=S.liveUrl||'';
   document.getElementById('sTvScale').value=S.tvScale||0;document.getElementById('sTvDebug').checked=!!S.tvDebug;
-  document.getElementById('sKey').value=localStorage.getItem(KEY+'.key')||'';
+  const hk=!!localStorage.getItem(KEY+'.key');document.getElementById('sKey').value='';document.getElementById('sKey').placeholder=hk?'已設定（留空表示不變更）':'尚未設定';
+  document.getElementById('sKeyClr').checked=false;document.getElementById('sKeyClr').parentElement.style.display=hk?'':'none';
+  document.getElementById('sUnit').value=S.unit||'';
+  document.getElementById('sChime').checked=S.netChime!==false;document.getElementById('sQuiet').checked=S.quietOn!==false;
+  document.getElementById('sQFrom').value=S.quietFrom??22;document.getElementById('sQTo').value=S.quietTo??6;
   document.getElementById('sMin').value=S.syncMin;
   dSet.showModal();
 }
@@ -2204,8 +2417,11 @@ function saveSettings(){
   const nf=document.getElementById('sFit').checked;if(nf!==(S.pcFit!==false)){S.pcFit=nf;setTimeout(()=>location.reload(),300);}
   const nu=document.getElementById('sUrl').value.trim(),du=document.getElementById('sDutyUrl').value.trim(),urlChanged=nu!==S.sheetUrl||du!==S.dutyUrl;S.sheetUrl=nu;S.dutyUrl=du;
   const lu=document.getElementById('sSync').value.trim();if(lu!==S.liveUrl){S.liveUrl=lu;livePulled=false;setTimeout(livePull,200);}
-  const nk=document.getElementById('sKey').value.trim(),keyChanged=nk!==(localStorage.getItem(KEY+'.key')||'');
-  localStorage.setItem(KEY+'.key',nk);
+  const ok0=localStorage.getItem(KEY+'.key')||'',clr=document.getElementById('sKeyClr').checked,nk=clr?'':(document.getElementById('sKey').value.trim()||ok0),keyChanged=nk!==ok0;
+  if(nk)localStorage.setItem(KEY+'.key',nk);else localStorage.removeItem(KEY+'.key');
+  {const u=document.getElementById('sUnit').value.trim();if(u&&u!==S.unit){S.unit=u;unitEl.textContent=u;}}
+  S.netChime=document.getElementById('sChime').checked;S.quietOn=document.getElementById('sQuiet').checked;
+  {const hh=x=>Math.min(23,Math.max(0,parseInt(x)||0));S.quietFrom=hh(document.getElementById('sQFrom').value);S.quietTo=hh(document.getElementById('sQTo').value);}logEvent('操作','修改設定'+(keyChanged?(nk?'（變更同步密碼）':'（清除同步密碼）'):''));
   if(keyChanged&&nk){if(!S.sharedAt)S.sharedAt=Date.now();livePulled=true;setTimeout(livePush,300);}  // 密碼變更 → 立刻上傳一次
   S.tvScale=Math.max(0,parseFloat(document.getElementById('sTvScale').value)||0);S.tvDebug=document.getElementById('sTvDebug').checked;
   S.syncMin=Math.max(5,+document.getElementById('sMin').value||30);
@@ -2245,7 +2461,8 @@ const unitEl=document.getElementById('unit');
 unitEl.addEventListener('input',()=>{S.unit=unitEl.textContent.trim();save();});
 unitEl.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();unitEl.blur();}});
 const notesEl=document.getElementById('notes');
-notesEl.addEventListener('input',()=>{S.notes=notesEl.value;save();});
+let notesLogT=null;
+notesEl.addEventListener('input',()=>{S.notes=notesEl.value;save();clearTimeout(notesLogT);notesLogT=setTimeout(()=>logEvent('操作','更新值班交接事項：'+S.notes.replace(/\s+/g,' ').slice(0,80)),60000);});
 window.addEventListener('storage',()=>{S=load();renderAll();});
 
 function renderAll(){showTab();renderLeader();renderHead();unitEl.textContent=S.unit;notesEl.value=S.notes;lastSlot=-1;lastKey='';tick();renderCars();}
@@ -2277,6 +2494,8 @@ if(TV)document.title='中山分隊 勤務看板（電視版）';
 (()=>{const e=document.getElementById('appSub');if(e){e.textContent=`消防勤務看板 · ${TV?'電視版（唯讀）':'值班台'} · ${APP_VER}`;e.title='版本 '+APP_VER+(BUILD&&BUILD!=='__BUILD__'?'（'+BUILD+'）':'');}})();
 if(STAGE){document.title='【測試】'+document.title;const r=document.createElement('div');r.className='stageRibbon';r.textContent='🧪 測試環境（不影響正式看板與派遣表）';document.body.appendChild(r);}
 livePull();setInterval(livePull,TV?15000:60000);
+document.getElementById('dSet').addEventListener('close',()=>{adminUntil=0;});
+if(!TV){logEvent('系統','看板開啟（'+APP_VER+'）');setTimeout(logFlush,8000);}
 if(!TV){setInterval(()=>dynAuto(),30000);setInterval(dynRead,180000);setTimeout(dynRead,15000);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){dynAuto();dynRead();}});}
 if(TV){
