@@ -238,6 +238,7 @@ function logAdd_(p) {
         const rows = byTab[tab], r0 = sh.getLastRow() + 1;
         sh.getRange(r0, 1, rows.length, LOG_HEAD.length).setNumberFormat('@').setValues(rows);
       });
+      SpreadsheetApp.flush();   // 先確實寫入再交出鎖，避免同時寫入時後寫的蓋掉先寫的
       fresh.forEach(function (id) { cache.put('lg' + id, '1', 21600); done.push(id); });
       purgeLog_(ss, cache);
     } finally {
