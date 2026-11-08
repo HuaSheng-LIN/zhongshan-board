@@ -6,9 +6,11 @@
  *  2. 把中山分隊的人車動態寫入派遣科「動態表」的中山區塊。
  *     自動同步：先比對動態表是否被人工修改，有修改就不覆蓋；手動同步（force=1）以看板為準。
  *  3. 讀取動態表中山區塊（action=dynread，需要密碼），讓看板發現人工修改並提示值班員。
+ *  4. 勤務歷程：寫入（action=logadd）與讀取某一天（action=logread），都需要密碼。
+ *     歷程存在 LOG_SHEET_ID 這份私人試算表，每月一個分頁，超過 LOG_KEEP_MONTHS 個月的分頁自動刪除。
  *
  * 測試環境：另外建一個 Apps Script 專案貼上同一份程式，只改 WRITE_KEY（用不同的測試密碼）
- *           與 DYN_SHEET_ID（改成測試用動態表），不要指向正式動態表。
+ *           DYN_SHEET_ID（改成測試用動態表）與 LOG_SHEET_ID（改成測試用歷程表），不要指向正式檔案。
  *
  * 設定步驟（只要做一次）：
  *  1. 打開 https://script.google.com → 「新專案」，把這整段程式貼上（取代原本內容），存檔。
@@ -32,12 +34,20 @@ const DYN_SHEET_ID = '18StcvFYkqQVOzF-1KEAJM0jHAyxQb8zdQTw2PnU-qwA';
 const DYN_TAB = '每日人車動態';
 const DYN_UNIT = '中山';
 
+// 勤務歷程：寫到維護者私人雲端硬碟的試算表（每月一個分頁），保存 12 個月
+// 測試中繼站請改成「【測試】勤務歷程」試算表的 ID
+const LOG_SHEET_ID = '1s6-KGnhDxzrbdp5BRCJLfXFpVlv2YNvjaeC5B1Otcyg';
+const LOG_KEEP_MONTHS = 12;
+const LOG_HEAD = ['勤務日', '時間', '類別', '內容', '時段值班', '裝置', '版本', '事件ID'];
+
 // 讀取：電視與值班台都會呼叫（支援 callback，方便網頁直接載入）
 function doGet(e) {
   const p = (e && e.parameter) || {};
   let out;
   if (p.action === 'dyn') out = JSON.stringify(writeDyn_(p));
   else if (p.action === 'dynread') out = JSON.stringify(readDyn_(p));
+  else if (p.action === 'logadd') out = JSON.stringify(logAdd_(p));
+  else if (p.action === 'logread') out = JSON.stringify(logRead_(p));
   else out = JSON.stringify(read_());
   const cb = p.callback;
   if (cb && /^[\w$.]+$/.test(cb)) {
@@ -170,6 +180,82 @@ function blockOf_(d) {
     rows: [0, 1, 2, 3, 4].map(i => { const x = rows[i] || {}; return [i >= 2 ? t(x.item) : '', t(x.veh), t(x.n)]; }),
     rest: t(d.rest)
   };
+}
+
+// ===== 勤務歷程 =====
+// 文字一律以純文字寫入；以 = + - @ 開頭的內容前面加 '，避免被當成公式
+function logCell_(x) {
+  let v = (x === null || x === undefined) ? '' : String(x).slice(0, 500);
+  if (/^[=+\-@]/.test(v)) v = "'" + v;
+  return v;
+}
+function logAdd_(p) {
+  try {
+    if (p.key !== WRITE_KEY) return { ok: false, error: '密碼錯誤' };
+    const evs = JSON.parse(p.e || '[]');
+    if (!Array.isArray(evs)) return { ok: false, error: '格式錯誤' };
+    const cache = CacheService.getScriptCache();
+    const lock = LockService.getScriptLock();
+    lock.waitLock(10000);
+    const done = [];
+    try {
+      const ss = SpreadsheetApp.openById(LOG_SHEET_ID);
+      const byTab = {}, fresh = [];
+      evs.slice(0, 50).forEach(function (e) {
+        const id = String(e.id || '').slice(0, 40);
+        const m = String(e.day || '').match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (!id || !m) return;
+        if (cache.get('lg' + id)) { done.push(id); return; }   // 已寫過（重送）不再重複寫入
+        const tab = m[1] + '-' + ('0' + m[2]).slice(-2);
+        (byTab[tab] = byTab[tab] || []).push([e.day, e.t, e.cat, e.msg, e.who, e.dev, e.ver, id].map(logCell_));
+        fresh.push(id);
+      });
+      Object.keys(byTab).forEach(function (tab) {
+        let sh = ss.getSheetByName(tab);
+        if (!sh) {
+          sh = ss.insertSheet(tab);
+          sh.getRange(1, 1, 1000, LOG_HEAD.length).setNumberFormat('@');
+          sh.getRange(1, 1, 1, LOG_HEAD.length).setValues([LOG_HEAD]).setFontWeight('bold');
+          sh.setFrozenRows(1);
+        }
+        const rows = byTab[tab], r0 = sh.getLastRow() + 1;
+        sh.getRange(r0, 1, rows.length, LOG_HEAD.length).setNumberFormat('@').setValues(rows);
+      });
+      fresh.forEach(function (id) { cache.put('lg' + id, '1', 21600); done.push(id); });
+      purgeLog_(ss, cache);
+    } finally {
+      lock.releaseLock();
+    }
+    return { ok: true, done: done };
+  } catch (err) {
+    return { ok: false, error: String(err && err.message || err) };
+  }
+}
+function logRead_(p) {
+  try {
+    if (p.key !== WRITE_KEY) return { ok: false, error: '密碼錯誤' };
+    const day = String(p.day || ''), m = day.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (!m) return { ok: false, error: '日期格式錯誤' };
+    const sh = SpreadsheetApp.openById(LOG_SHEET_ID).getSheetByName(m[1] + '-' + ('0' + m[2]).slice(-2));
+    if (!sh || sh.getLastRow() < 2) return { ok: true, events: [] };
+    const v = sh.getRange(2, 1, sh.getLastRow() - 1, LOG_HEAD.length).getDisplayValues();
+    const ev = v.filter(function (r) { return r[0] === day; }).map(function (r) {
+      return { day: r[0], t: r[1], cat: r[2], msg: r[3], who: r[4], dev: r[5], ver: r[6], id: r[7] };
+    });
+    return { ok: true, events: ev.slice(-1500) };
+  } catch (err) {
+    return { ok: false, error: String(err && err.message || err) };
+  }
+}
+// 刪除超過保存期限的月份分頁（每天最多檢查一次）
+function purgeLog_(ss, cache) {
+  if (cache.get('lgPurge')) return;
+  cache.put('lgPurge', '1', 21600);
+  const now = new Date(), limit = now.getFullYear() * 12 + now.getMonth() - LOG_KEEP_MONTHS;
+  ss.getSheets().forEach(function (sh) {
+    const m = sh.getName().match(/^(\d{4})-(\d{2})$/);
+    if (m && (+m[1]) * 12 + (+m[2] - 1) < limit && ss.getSheets().length > 1) ss.deleteSheet(sh);
+  });
 }
 
 function read_() {
