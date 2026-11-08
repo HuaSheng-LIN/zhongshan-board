@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="21860068f812">
+<meta name="build" content="646fd5271bd0">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -526,7 +526,7 @@ table.hist small.hp{color:#ffb347}
 <header>
   <div class="logo">🚒</div>
   <div>
-    <div id="unit" contenteditable="true" spellcheck="false" title="點擊可修改分隊名稱"></div>
+    <div id="unit" spellcheck="false"></div>
     <div class="hint" id="appSub">消防勤務看板 · 值班台</div>
   </div>
   <div class="leader" onclick="openLeader()" title="點擊可手動指定帶隊官">
@@ -714,6 +714,15 @@ table.hist small.hp{color:#ffb347}
   <div class="dbtns"><button style="margin-right:auto" onclick="dDynDiff.close()">先不處理</button><button onclick="dDynDiff.close();openDyn()">以看板為準（覆蓋動態表）</button><button class="ok" id="ddAdopt" onclick="adoptDyn()">以動態表為準（更新看板）</button></div>
 </dialog>
 
+<!-- 管理密碼 -->
+<dialog id="dAdmin">
+  <h3>🔒 需要管理密碼</h3>
+  <div class="hint" style="margin-bottom:8px" id="admWhat">這個功能只開放給管理人員。</div>
+  <input id="admPw" type="password" autocomplete="off" placeholder="請輸入管理密碼" onkeydown="if(event.key==='Enter'){event.preventDefault();adminVerify();}">
+  <div id="admMsg" style="margin-top:8px;min-height:20px"></div>
+  <div class="dbtns"><button onclick="dAdmin.close()">取消</button><button class="ok" id="admOk" onclick="adminVerify()">確認</button></div>
+</dialog>
+
 <!-- 系統紀錄 -->
 <dialog id="dHist" class="wide histDlg">
   <h3>📜 系統紀錄</h3>
@@ -735,6 +744,8 @@ table.hist small.hp{color:#ffb347}
   <div class="row2"><div><label>動態表「火警」列平常的出動車輛</label><input id="sDynFire"></div><div><label>動態表「救護」列平常的出動車輛</label><input id="sDynEms"></div></div>
   <label>即時同步網址（Google Apps Script，讓電視與值班台同步）</label><input id="sSync" placeholder="https://script.google.com/macros/s/……/exec">
   <label>同步寫入密碼（只有值班台需要填；電視不用填）</label><input id="sKey" type="password" autocomplete="off">
+  <label style="display:flex;gap:8px;align-items:center;color:var(--text)"><input id="sKeyClr" type="checkbox" style="width:auto">清除這台電腦的同步寫入密碼</label>
+  <label>看板顯示的分隊名稱</label><input id="sUnit">
   <label>電視畫面（會透過即時同步套用到電視，約 15 秒內生效）</label>
   <div class="row2">
     <div><label style="margin-top:0">縮放比例（0＝自動；例：0.9＝90%）</label><input id="sTvScale" type="number" step="0.05" min="0" max="3"></div>
@@ -1244,7 +1255,8 @@ function renderDuty(){
   el.querySelectorAll('td.ed').forEach(td=>td.addEventListener('click',()=>openPick(k,+td.dataset.r,+td.dataset.c)));
   if(isToday)el.querySelector('tr.cur')?.scrollIntoView({block:'center'});
 }
-function clearTable(){const k=keyOf(viewDate());if(confirm(`確定清空 ${rocDate(viewDate())} 的班表？`)){S.table[k]=[];save();renderDuty();renderNow();}}
+function clearTable(){requireAdmin('清空此日班表',clearTable0);}
+function clearTable0(){const k=keyOf(viewDate());if(confirm(`確定清空 ${rocDate(viewDate())} 的班表？`)){S.table[k]=[];logEvent('操作',`清空 ${rocDate(viewDate())} 的班表`);save();renderDuty();renderNow();}}
 
 // ===== 字卡自動調整大小：先用放大後的字級，若有字卡放不下就逐步縮小，確保不超出、不換行、不截斷 =====
 function fitOver(root,mode){
@@ -2280,7 +2292,29 @@ function renderStats(){
 }
 
 // ===== 設定 =====
-function openSettings(){
+// ===== 管理密碼（設定、清空班表需要）=====
+// 密碼存在中繼站（Apps Script），看板只把輸入的密碼送去核對；通過後 10 分鐘內有效，關閉設定視窗即重新上鎖
+let adminUntil=0,adminNext=null;
+function requireAdmin(what,cb){
+  if(TV)return;
+  if(!S.liveUrl||Date.now()<adminUntil){cb();return;}   // 尚未設定中繼站（第一次安裝）時不擋
+  adminNext=cb;document.getElementById('admWhat').textContent=`「${what}」只開放給管理人員，請輸入管理密碼。`;
+  document.getElementById('admPw').value='';document.getElementById('admMsg').textContent='';document.getElementById('admMsg').className='';
+  document.getElementById('admOk').disabled=false;dAdmin.showModal();setTimeout(()=>document.getElementById('admPw').focus(),50);
+}
+async function adminVerify(){
+  const pw=document.getElementById('admPw').value,m=document.getElementById('admMsg'),btn=document.getElementById('admOk');
+  if(!pw){m.className='err';m.textContent='請輸入管理密碼';return;}
+  btn.disabled=true;m.className='';m.textContent='驗證中…';
+  const res=await jsonp(S.liveUrl,{action:'admin',pw},15000);btn.disabled=false;
+  if(res&&res.ok){adminUntil=Date.now()+10*60000;logEvent('操作','管理密碼驗證成功');dAdmin.close();const cb=adminNext;adminNext=null;if(cb)cb();return;}
+  m.className='err';
+  if(res&&res.ok===undefined&&'data' in res)m.textContent='中繼站尚未更新，無法驗證管理密碼。';
+  else if(res&&/無法連線|逾時/.test(res.error||''))m.textContent='目前無法連線，網路中斷時無法驗證管理密碼。';
+  else{m.textContent=(res&&res.error)||'驗證失敗';logEvent('操作','管理密碼驗證失敗'+(res&&res.locked?'（錯誤次數過多，暫停 10 分鐘）':''));}
+}
+function openSettings(){requireAdmin('設定',openSettings0);}
+function openSettings0(){
   document.getElementById('sCars').value=S.vehicles.map(v=>[v.type,v.name,v.note||'',v.crew||'',v.seats??''].join(',')).join('\n');
   document.getElementById('sDuties').value=S.duties.join('，');
   document.getElementById('sAway').value=(S.awayCols||[]).join('，');
@@ -2295,7 +2329,9 @@ function openSettings(){
   document.getElementById('sFit').checked=S.pcFit!==false;
   document.getElementById('sSync').value=S.liveUrl||'';
   document.getElementById('sTvScale').value=S.tvScale||0;document.getElementById('sTvDebug').checked=!!S.tvDebug;
-  document.getElementById('sKey').value=localStorage.getItem(KEY+'.key')||'';
+  const hk=!!localStorage.getItem(KEY+'.key');document.getElementById('sKey').value='';document.getElementById('sKey').placeholder=hk?'已設定（留空表示不變更）':'尚未設定';
+  document.getElementById('sKeyClr').checked=false;document.getElementById('sKeyClr').parentElement.style.display=hk?'':'none';
+  document.getElementById('sUnit').value=S.unit||'';
   document.getElementById('sMin').value=S.syncMin;
   dSet.showModal();
 }
@@ -2310,8 +2346,9 @@ function saveSettings(){
   const nf=document.getElementById('sFit').checked;if(nf!==(S.pcFit!==false)){S.pcFit=nf;setTimeout(()=>location.reload(),300);}
   const nu=document.getElementById('sUrl').value.trim(),du=document.getElementById('sDutyUrl').value.trim(),urlChanged=nu!==S.sheetUrl||du!==S.dutyUrl;S.sheetUrl=nu;S.dutyUrl=du;
   const lu=document.getElementById('sSync').value.trim();if(lu!==S.liveUrl){S.liveUrl=lu;livePulled=false;setTimeout(livePull,200);}
-  const nk=document.getElementById('sKey').value.trim(),keyChanged=nk!==(localStorage.getItem(KEY+'.key')||'');
-  localStorage.setItem(KEY+'.key',nk);logEvent('操作','修改設定'+(keyChanged?'（含同步密碼）':''));
+  const ok0=localStorage.getItem(KEY+'.key')||'',clr=document.getElementById('sKeyClr').checked,nk=clr?'':(document.getElementById('sKey').value.trim()||ok0),keyChanged=nk!==ok0;
+  if(nk)localStorage.setItem(KEY+'.key',nk);else localStorage.removeItem(KEY+'.key');
+  {const u=document.getElementById('sUnit').value.trim();if(u&&u!==S.unit){S.unit=u;unitEl.textContent=u;}}logEvent('操作','修改設定'+(keyChanged?(nk?'（變更同步密碼）':'（清除同步密碼）'):''));
   if(keyChanged&&nk){if(!S.sharedAt)S.sharedAt=Date.now();livePulled=true;setTimeout(livePush,300);}  // 密碼變更 → 立刻上傳一次
   S.tvScale=Math.max(0,parseFloat(document.getElementById('sTvScale').value)||0);S.tvDebug=document.getElementById('sTvDebug').checked;
   S.syncMin=Math.max(5,+document.getElementById('sMin').value||30);
@@ -2384,6 +2421,7 @@ if(TV)document.title='中山分隊 勤務看板（電視版）';
 (()=>{const e=document.getElementById('appSub');if(e){e.textContent=`消防勤務看板 · ${TV?'電視版（唯讀）':'值班台'} · ${APP_VER}`;e.title='版本 '+APP_VER+(BUILD&&BUILD!=='__BUILD__'?'（'+BUILD+'）':'');}})();
 if(STAGE){document.title='【測試】'+document.title;const r=document.createElement('div');r.className='stageRibbon';r.textContent='🧪 測試環境（不影響正式看板與派遣表）';document.body.appendChild(r);}
 livePull();setInterval(livePull,TV?15000:60000);
+document.getElementById('dSet').addEventListener('close',()=>{adminUntil=0;});
 if(!TV){logEvent('系統','看板開啟（'+APP_VER+'）');setTimeout(logFlush,8000);}
 if(!TV){setInterval(()=>dynAuto(),30000);setInterval(dynRead,180000);setTimeout(dynRead,15000);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){dynAuto();dynRead();}});}

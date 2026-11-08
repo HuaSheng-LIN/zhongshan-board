@@ -7,6 +7,7 @@
  *     自動同步：先比對動態表是否被人工修改，有修改就不覆蓋；手動同步（force=1）以看板為準。
  *  3. 讀取動態表中山區塊（action=dynread，需要密碼），讓看板發現人工修改並提示值班員。
  *  4. 勤務歷程：寫入（action=logadd）與讀取某一天（action=logread），都需要密碼。
+ *  5. 管理密碼檢查（action=admin）：看板開啟「設定」前先到這裡核對 ADMIN_KEY。
  *     歷程存在 LOG_SHEET_ID 這份私人試算表，每月一個分頁，超過 LOG_KEEP_MONTHS 個月的分頁自動刪除。
  *
  * 測試環境：另外建一個 Apps Script 專案貼上同一份程式，只改 WRITE_KEY（用不同的測試密碼）
@@ -14,7 +15,8 @@
  *
  * 設定步驟（只要做一次）：
  *  1. 打開 https://script.google.com → 「新專案」，把這整段程式貼上（取代原本內容），存檔。
- *  2. 把下面 WRITE_KEY 改成你們自己的密碼（值班台設定時要輸入同一組）。
+ *  2. 把下面 WRITE_KEY 改成你們自己的密碼（值班台設定時要輸入同一組），
+ *     ADMIN_KEY 改成只有維護者知道的管理密碼（開啟看板「設定」用）。
  *  3. 右上角「部署」→「新增部署作業」→ 類型選「網頁應用程式」
  *       執行身分：我
  *       誰可以存取：所有人
@@ -26,6 +28,8 @@
  */
 
 const WRITE_KEY = '請改成你們自己的密碼';
+// 管理密碼：開啟看板「設定」、清空班表時需要。請改成只有維護者知道的密碼，並且不要和 WRITE_KEY 相同
+const ADMIN_KEY = '請改成管理密碼';
 
 const CHUNK = 8000; // 每個儲存欄位的長度上限（Apps Script 單一屬性約 9KB）
 
@@ -48,6 +52,7 @@ function doGet(e) {
   else if (p.action === 'dynread') out = JSON.stringify(readDyn_(p));
   else if (p.action === 'logadd') out = JSON.stringify(logAdd_(p));
   else if (p.action === 'logread') out = JSON.stringify(logRead_(p));
+  else if (p.action === 'admin') out = JSON.stringify(adminCheck_(p));
   else out = JSON.stringify(read_());
   const cb = p.callback;
   if (cb && /^[\w$.]+$/.test(cb)) {
@@ -180,6 +185,18 @@ function blockOf_(d) {
     rows: [0, 1, 2, 3, 4].map(i => { const x = rows[i] || {}; return [i >= 2 ? t(x.item) : '', t(x.veh), t(x.n)]; }),
     rest: t(d.rest)
   };
+}
+
+// ===== 管理密碼檢查 =====
+// 10 分鐘內錯誤 10 次就暫停 10 分鐘，避免一直猜密碼
+function adminCheck_(p) {
+  if (ADMIN_KEY === '請改成管理密碼') return { ok: false, error: '中繼站尚未設定管理密碼' };
+  const cache = CacheService.getScriptCache();
+  const fails = Number(cache.get('admFail') || 0);
+  if (fails >= 10) return { ok: false, locked: true, error: '密碼錯誤次數過多，請 10 分鐘後再試' };
+  if (String(p.pw || '') === ADMIN_KEY) { cache.remove('admFail'); return { ok: true }; }
+  cache.put('admFail', String(fails + 1), 600);
+  return { ok: false, error: '管理密碼錯誤' };
 }
 
 // ===== 勤務歷程 =====
