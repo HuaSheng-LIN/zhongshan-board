@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<title>派遣科｜每日人車動態看板</title>
+<style>
+:root{
+  --bg:#0b1220; --panel:#131c2e; --panel2:#1a2540; --line:#2a3858;
+  --text:#e8edf7; --muted:#8c9ab5; --red:#e5383b; --amber:#f4a261;
+  --green:#2ec27e; --blue:#4ea8de; --gray:#6c7a96; --gold:#c9a227; --teal:#2bb3a6;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:hidden;
+  font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;}
+button{font-family:inherit;cursor:pointer}
+/* 以 1920×1080 為基準等比例縮放 */
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;
+  display:flex;flex-direction:column;padding:14px;gap:12px}
+
+header{display:flex;align-items:center;gap:22px;background:linear-gradient(90deg,#7a0d12,#131c2e 60%);
+  border:1px solid var(--line);border-radius:12px;padding:8px 22px;height:92px;flex:none}
+.logo{font-size:44px}
+.ttl{display:flex;flex-direction:column}
+.ttl b{font-size:40px;letter-spacing:2px;line-height:1.1}
+.ttl small{font-size:17px;color:#cfd8ea}
+.clock{margin-left:auto;text-align:right}
+#time{font-size:52px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:2px;line-height:1}
+#sync{font-size:16px;margin-top:6px;color:#cfd8ea;display:flex;align-items:center;justify-content:flex-end;gap:6px}
+#sync i{width:11px;height:11px;border-radius:50%;background:var(--gray);display:inline-block}
+#sync.ok i{background:var(--green);box-shadow:0 0 8px var(--green)}
+#sync.bad i{background:var(--red);box-shadow:0 0 8px var(--red)}
+#sync.bad{color:#ffb3b3}
+.gear{background:#0005;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:20px}
+.gear:hover{background:#fff2}
+
+/* 全區統計 */
+#sum{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;flex:none;height:96px}
+.st{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 18px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.st .k{font-size:18px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.st .k .bar{width:5px;height:18px;border-radius:3px;background:var(--red)}
+.st .v{font-size:42px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st .v small{font-size:20px;color:var(--muted);font-weight:500;margin-left:4px}
+.st .v.list{font-size:24px;font-weight:700;white-space:normal;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.st .v.list.s{font-size:19px}
+.st.warn{border-color:var(--red);animation:wglow 1.2s ease-in-out infinite}
+.st.warn .v{color:#ff8a8c}
+
+/* 分隊卡片 5×2 */
+#grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:1fr 1fr;gap:12px}
+.u{--s:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-height:0;min-width:0;overflow:hidden;position:relative}
+.u.warn{border:2px solid var(--red);animation:wglow 1.2s ease-in-out infinite}
+@keyframes wglow{0%,100%{box-shadow:0 0 0 #e5383b00}50%{box-shadow:0 0 22px #e5383bcc}}
+.u>*{flex:none}
+.uh{display:flex;align-items:center;gap:8px}
+.uh .bar{width:6px;height:30px;border-radius:3px;background:var(--red);flex:none}
+.uh .nm{font-size:32px;font-weight:800;letter-spacing:2px;white-space:nowrap}
+.ld{margin-left:auto;border:2px solid var(--gold);background:#c9a22718;border-radius:8px;padding:2px 10px;display:flex;flex-direction:column;align-items:center;min-width:0}
+.ld small{font-size:12px;color:#e8d48a;line-height:1.1}
+.ld b{font-size:20px;white-space:nowrap;line-height:1.2}
+.nums{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.num{background:var(--panel2);border-radius:8px;padding:4px 10px;display:flex;align-items:baseline;gap:8px}
+.num .k{font-size:16px;color:var(--muted)}
+.num .v{font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;margin-left:auto}
+.num.here .v{color:var(--green)}
+.u.warn .num.here{background:#5a1216}
+.u.warn .num.here .v{color:#ff6b6e;animation:blink 1s ease-in-out infinite}
+@keyframes blink{50%{opacity:.35}}
+.alert{position:absolute;right:12px;top:58px;display:none}
+.sec{display:flex;flex-direction:column;gap:4px;min-height:0}
+.sec .k{font-size:15px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.sec .k b{color:var(--text);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:calc(5px*var(--s))}
+.c{font-size:calc(21px*var(--s));font-weight:800;font-variant-numeric:tabular-nums;border-radius:6px;padding:1px 8px;line-height:1.35;color:#fff;white-space:nowrap}
+.c em{font-style:normal;font-size:13px;font-weight:500;opacity:.9;margin-left:3px}
+.c.fire{background:#b3261e}
+.c.amb{background:#1f5fae}
+.c.svc{background:#3d4b6b}
+.c.oth{background:#13706a}
+.c.stop{background:transparent;border:1.5px dashed var(--gray);color:var(--muted);text-decoration:line-through}
+.none{font-size:15px;color:#56637d}
+.tasks{display:flex;flex-direction:column;gap:4px;margin-top:auto}
+.t{display:flex;align-items:center;gap:8px;background:var(--panel2);border-radius:6px;padding:calc(3px*var(--s)) 8px;font-size:calc(18px*var(--s));min-width:0}
+.t .tn{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46%}
+.t .tv{color:#cfd8ea;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.t .tp{margin-left:auto;white-space:nowrap;font-weight:800;font-variant-numeric:tabular-nums}
+.t.fire{border-left:5px solid var(--red)}
+.t.amb{border-left:5px solid var(--blue)}
+.t.out{border-left:5px solid var(--amber)}
+.t.rest{border-left:5px solid var(--gray)}
+.t.idle .tp{color:var(--muted);font-weight:500}
+.t.fire.on{background:#5a1216;animation:fpulse 1s ease-in-out infinite}
+.t.amb.on{background:#123a6b;animation:bpulse 1s ease-in-out infinite}
+.t.out.on{background:#4a3214}
+@keyframes fpulse{50%{background:#a0191e}}
+@keyframes bpulse{50%{background:#1f5fae}}
+.bad{font-size:14px;color:var(--amber)}
+
+#msg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#0b1220ee;z-index:5}
+#msg div{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px 36px;font-size:24px;max-width:1100px;line-height:1.6}
+#cfg{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:10}
+#cfg form{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 24px;width:min(640px,94vw);display:flex;flex-direction:column;gap:10px;font-size:15px}
+#cfg input{font:inherit;padding:6px 8px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px}
+#cfg .row{display:flex;gap:8px;justify-content:flex-end}
+#cfg button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 14px}
+#cfg button.pri{background:var(--red);border-color:var(--red)}
+#cfg small{color:var(--muted)}
+#netBar{position:absolute;left:14px;right:14px;top:112px;z-index:4;background:#b3261eee;border-radius:10px;padding:8px 16px;font-size:22px;font-weight:700}
+#netBar small{font-weight:400;font-size:17px;margin-left:8px}
+</style>
+</head>
+<body>
+<div id="stage">
+  <header>
+    <div class="logo">🚒</div>
+    <div class="ttl"><b>每日人車動態看板</b><small>派遣科動態表「每日人車動態」｜各分隊在隊人數、待命與報停車輛、勤務</small></div>
+    <div class="clock"><div id="time">--:--:--</div><div id="sync"><i></i><span>連線中…</span></div></div>
+    <button class="gear" id="gear" title="設定">⚙</button>
+  </header>
+  <div id="netBar" hidden></div>
+  <section id="sum"></section>
+  <section id="grid"></section>
+  <div id="msg"><div></div></div>
+</div>
+<div id="cfg"><form onsubmit="return saveCfg(event)">
+  <b style="font-size:19px">⚙ 設定</b>
+  <label>中繼站網址（Apps Script 網頁應用程式）<br><input id="cfUrl" style="width:100%"></label>
+  <label>讀取密碼（Code.gs 的 READ_KEY）<br><input id="cfKey" type="password" style="width:100%"></label>
+  <label>注意人力門檻（在隊人數 ≤ 此數字閃紅）<br><input id="cfWarn" type="number" min="0" max="20" style="width:120px"></label>
+  <small>設定只存在這台電腦的瀏覽器。也可用網址參數一次設定：…/dispatch/?k=密碼</small>
+  <div class="row"><button type="button" onclick="cfgClose()">取消</button><button class="pri">儲存</button></div>
+</form></div>
+<script>
+// ===== 標準時間（台北 UTC+8）：向網站伺服器取得時間，裝置時鐘或時區錯誤也正確 =====
+const _Date=Date;let CLOCK_OFF=0;
+function tzFix(){return (new _Date().getTimezoneOffset()+480)*60000;}
+function now(){return new _Date(_Date.now()+CLOCK_OFF+tzFix());}
+async function syncClock(){
+  if(!/^https?:/.test(location.protocol))return;
+  try{const t0=_Date.now();const r=await fetch(location.pathname+'?clock='+t0,{method:'HEAD',cache:'no-store'});
+    const t1=_Date.now(),hd=r.headers.get('Date'),srv=hd?_Date.parse(hd):NaN;
+    if(!isNaN(srv))CLOCK_OFF=srv+500+(t1-t0)/2-t1;}catch(e){}
+}
+const pad=n=>String(n).padStart(2,'0');
+const hms=d=>pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+function tick(){document.getElementById('time').textContent=hms(now());}
+
+// ===== 設定 =====
+const KEY='dispatchBoard.v1';
+const DEF={url:'https://script.google.com/macros/s/AKfycby2hOW3QFGmh5cix-1jeBkwVl7UrBJ2LRNswfnQlyxLHS_ry-sDt7YQDftfukHwzWVv/exec',key:'',warn:3};
+let C=Object.assign({},DEF,JSON.parse(localStorage.getItem(KEY)||'{}'));
+(function(){const q=new URLSearchParams(location.search);let ch=false;
+  if(q.get('k')){C.key=q.get('k');ch=true;} if(q.get('relay')){C.url=q.get('relay');ch=true;}
+  if(ch){localStorage.setItem(KEY,JSON.stringify(C));q.delete('k');q.delete('relay');
+    history.replaceState(null,'',location.pathname+(q.toString()?'?'+q:''));}})();
+const gear=document.getElementById('gear'),cfg=document.getElementById('cfg');
+gear.onclick=()=>{cfUrl.value=C.url;cfKey.value=C.key;cfWarn.value=C.warn;cfg.style.display='flex';};
+function cfgClose(){cfg.style.display='none';}
+function saveCfg(e){e.preventDefault();C.url=cfUrl.value.trim();C.key=cfKey.value.trim();C.warn=+cfWarn.value||0;
+  localStorage.setItem(KEY,JSON.stringify(C));cfgClose();load();return false;}
+
+// ===== 讀取（JSONP，避開 CORS）=====
+function jsonp(url,ms=20000){return new Promise((ok,no)=>{
+  const cb='_dj'+_Date.now()+Math.floor(Math.random()*1e4),s=document.createElement('script');
+  const done=()=>{delete window[cb];s.remove();clearTimeout(tm);};
+  const tm=setTimeout(()=>{done();no(new Error('逾時'));},ms);
+  window[cb]=d=>{done();ok(d);};
+  s.onerror=()=>{done();no(new Error('無法連線中繼站'));};
+  s.src=url+(url.includes('?')?'&':'?')+'callback='+cb;document.head.appendChild(s);});}
+
+let last=null,lastOk=0,lastErr='';
+async function load(){
+  if(!C.key){showMsg('尚未設定讀取密碼。請按右上角 ⚙ 輸入中繼站的 READ_KEY。');setSync();return;}
+  try{
+    const d=window.DEMO?window.DEMO:await jsonp(C.url+'?action=dynall&k='+encodeURIComponent(C.key)+'&t='+_Date.now());
+    if(!d||!d.ok)throw new Error((d&&d.error)||'中繼站沒有回應資料（可能尚未部署新版本）');
+    last=d;lastOk=_Date.now();lastErr='';showMsg('');render(d.values);
+  }catch(e){lastErr=e.message||String(e);if(!last)showMsg('讀取失敗：'+lastErr);}
+  setSync();
+}
+function setSync(){const el=document.getElementById('sync');
+  if(!lastOk){el.className='bad';el.lastChild.textContent=lastErr?'讀取失敗':'尚未讀取';return;}
+  const age=(_Date.now()-lastOk)/1000;
+  el.className=age<180?'ok':'bad';
+  el.lastChild.textContent=(age<180?'即時同步':'資料可能不是最新')+'｜更新 '+hms(new _Date(lastOk+CLOCK_OFF+tzFix()));
+  el.title=lastErr?'最近一次失敗：'+lastErr:'';
+}
+function showMsg(t){const m=document.getElementById('msg');m.style.display=t?'flex':'none';m.firstElementChild.textContent=t;}
+
+// ===== 解析動態表 =====
+// 每個分隊區塊：以「今日服勤人數」上一格為分隊名稱（r0,c0）
+//  r0 名稱…帶隊官(c0+5)｜r0+1 今日服勤人數(c0+1)｜r0+2~3 待命車輛(c0+1~6)｜r0+4 在隊人數(c0+1)
+//  r0+5 報停車輛(c0+1~6)｜r0+6 勤務內容標題｜r0+7… 勤務（項目 c0、車輛 c0+1、人次 c0+6）直到「休息班」
+const cl=x=>{const s=String(x==null?'':x).replace(/\s+/g,' ').trim();return /^[.。,，、ㄔ\-－]*$/.test(s)?'':s;};
+const lab=x=>cl(x).replace(/\s/g,'');
+function parse(V){
+  const g=(r,c)=>cl((V[r]||[])[c]);const units=[];
+  for(let r=1;r<V.length;r++)for(let c=0;c<(V[r]||[]).length;c++){
+    if(lab(V[r][c])!=='今日服勤人數')continue;
+    const r0=r-1,c0=c,u={name:g(r0,c0)||'（未命名）',leader:g(r0,c0+5),issues:[]};
+    const chk=(dr,t)=>{if(!lab((V[r0+dr]||[])[c0]).startsWith(t))u.issues.push(t);};
+    chk(2,'待命車輛');chk(4,'在隊人數');chk(5,'報停車輛');chk(6,'勤務內容');
+    u.duty=num(g(r0+1,c0+1));u.here=num(g(r0+4,c0+1));
+    u.sheetWarn=/注意人力/.test(g(r0+4,c0));
+    u.standby=[];for(const dr of[2,3])for(let k=1;k<=6;k++){const v=g(r0+dr,c0+k);if(v)u.standby.push(v);}
+    u.stopped=[];for(let k=1;k<=6;k++){const v=g(r0+5,c0+k);if(v)u.stopped.push(v);}
+    u.tasks=[];u.rest=null;
+    for(let dr=7;dr<=16;dr++){const it=g(r0+dr,c0);
+      if(lab(it).startsWith('休息班')){u.rest=num(g(r0+dr,c0+6));break;}
+      if(lab(it)==='今日服勤人數'||lab(it)==='勤務內容'&&dr>7)break;
+      const veh=g(r0+dr,c0+1),n=g(r0+dr,c0+6);
+      if(it||veh)u.tasks.push({item:it||'（未填項目）',veh,n:num(n)});}
+    units.push(u);}
+  return units;}
+function num(s){if(s===''||s==null)return null;const m=String(s).match(/-?\d+/);return m?+m[0]:null;}
+function vkind(v){const m=String(v).match(/^\d+/);if(!m)return'oth';const d=m[0][0];return d==='9'?'amb':d==='8'?'svc':'fire';}
+function chip(v,cls){const m=String(v).match(/^(\d+)\s*[\(（+＋]?\s*(.*?)[\)）]?$/);
+  const code=m&&m[2]!==undefined?m[1]:v,note=m?m[2]:'';
+  return `<span class="c ${cls||vkind(v)}">${esc(code)}${note?`<em>${esc(note)}</em>`:''}</span>`;}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ===== 畫面 =====
+function render(V){
+  const U=parse(V);
+  if(!U.length){showMsg('動態表中找不到任何分隊區塊（「今日服勤人數」），版面可能已變更。');return;}
+  const warnOf=u=>u.here!=null&&u.here<=C.warn||u.sheetWarn;
+  const tot={duty:0,here:0,fire:0,amb:0,oth:0,stop:0};
+  U.forEach(u=>{tot.duty+=u.duty||0;tot.here+=u.here||0;tot.stop+=u.stopped.length;
+    u.standby.forEach(v=>{const k=vkind(v);tot[k==='amb'?'amb':k==='fire'?'fire':'oth']++;});
+});
+  const W=U.filter(warnOf);
+  document.getElementById('sum').innerHTML=
+    st('今日服勤人數',tot.duty,'人')+st('在隊人數',tot.here,'人')+
+    st('待命消防車輛',tot.fire,'輛','var(--red)')+st('待命救護車',tot.amb,'輛','var(--blue)')+
+    st('報停車輛',tot.stop,'輛','var(--gray)')+
+    `<div class="st${W.length?' warn':''}"><div class="k"><span class="bar" style="background:${W.length?'var(--red)':'var(--green)'}"></span>注意人力（在隊 ≤ ${C.warn} 人）</div>
+      <div class="v list${W.length>3?' s':''}">${W.length?W.map(u=>esc(u.name)+' '+(u.here??'?')).join('、'):'<span style="color:var(--green)">無</span>'}</div></div>`;
+  document.getElementById('grid').innerHTML=U.map(u=>{
+    const w=warnOf(u);
+    const tasks=u.tasks.map(t=>{const k=/^火警/.test(t.item)?'fire':/^救護/.test(t.item)?'amb':'out';
+      const on=t.n>0;
+      return `<div class="t ${k}${on?' on':' idle'}"><span class="tn">${esc(t.item)}</span><span class="tv">${esc(t.veh)}</span>
+        <span class="tp">${on?'外出 '+t.n+' 人':''}</span></div>`;}).join('')+
+      (u.rest!=null?`<div class="t rest${u.rest>0?'':' idle'}"><span class="tn">休息班</span><span class="tp">${u.rest} 人</span></div>`:'');
+    return `<div class="u${w?' warn':''}">
+      <div class="uh"><span class="bar"></span><span class="nm">${esc(u.name)}</span>
+        ${u.leader?`<div class="ld"><small>帶隊官</small><b>${esc(u.leader)}</b></div>`:''}</div>
+      <div class="nums"><div class="num"><span class="k">服勤</span><span class="v">${u.duty??'–'}</span></div>
+        <div class="num here"><span class="k">${w?'⚠ 在隊':'在隊'}</span><span class="v">${u.here??'–'}</span></div></div>
+      <div class="sec"><div class="k">待命車輛 <b>${u.standby.length}</b></div>
+        <div class="chips">${u.standby.map(v=>chip(v)).join('')||'<span class="none">無</span>'}</div></div>
+      ${u.stopped.length?`<div class="sec"><div class="k">報停車輛 <b>${u.stopped.length}</b></div><div class="chips">${u.stopped.map(v=>chip(v,'stop')).join('')}</div></div>`:''}
+      <div class="tasks">${tasks}</div>
+      ${u.issues.length?`<div class="bad">⚠ 區塊版面與預期不同（${esc(u.issues.join('、'))}），資料僅供參考</div>`:''}
+    </div>`;}).join('');
+  fitTasks();
+}
+function st(k,v,unit,color){return `<div class="st"><div class="k"><span class="bar" style="background:${color||'var(--red)'}"></span>${k}</div><div class="v">${v}<small>${unit}</small></div></div>`;}
+// 卡片內容太多時縮小勤務列字級，避免被截掉
+function fitTasks(){document.querySelectorAll('.u').forEach(u=>{let s=1;u.style.setProperty('--s',1);
+  while(u.scrollHeight>u.clientHeight+1&&s>0.6){s-=0.05;u.style.setProperty('--s',s.toFixed(2));}});}
+
+// ===== 縮放 =====
+function fit(){const s=Math.min(innerWidth/1920,innerHeight/1080),el=document.getElementById('stage');
+  el.style.transform=`translate(${(innerWidth-1920*s)/2}px,${(innerHeight-1080*s)/2}px) scale(${s})`;}
+addEventListener('resize',fit);fit();
+
+// ===== 網路斷線提示 =====
+let netFail=0,netOkAt=_Date.now();
+async function netCheck(){if(!/^https?:/.test(location.protocol))return;let ok=false;
+  try{const r=await fetch(location.pathname+'?ping='+_Date.now(),{method:'HEAD',cache:'no-store'});ok=r.ok||r.status===304;}catch(e){}
+  const b=document.getElementById('netBar');
+  if(ok){netOkAt=_Date.now();if(netFail>=2){netFail=0;b.hidden=true;load();syncClock();}netFail=0;}
+  else if(++netFail>=2){const t=new _Date(netOkAt+CLOCK_OFF+tzFix());
+    b.innerHTML=`⚠ 網路已中斷<small>（最後連線 ${pad(t.getHours())}:${pad(t.getMinutes())}，畫面資料可能不是最新）</small>`;b.hidden=false;}}
+
+// ===== 啟動 =====
+syncClock();setInterval(syncClock,30*60000);
+tick();setInterval(tick,1000);
+load();setInterval(load,30000);setInterval(setSync,5000);
+setInterval(netCheck,30000);
+// 每天 04:00 自動重新整理（略過暫存）
+setInterval(()=>{const d=now();if(d.getHours()===4&&d.getMinutes()===0&&d.getSeconds()<30){
+  const q=new URLSearchParams(location.search);q.set('v',_Date.now());location.replace(location.pathname+'?'+q);}},20000);
+</script>
+</body>
+</html>

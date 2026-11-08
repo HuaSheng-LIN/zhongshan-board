@@ -5,6 +5,7 @@
  *  1. 值班台修改車輛狀態、志工、交接事項時，把資料存到這裡；電視每 15 秒來讀一次。
  *  2. 把中山分隊的人車動態寫入派遣科「動態表」的中山區塊。
  *     自動同步：先比對動態表是否被人工修改，有修改就不覆蓋；手動同步（force=1）以看板為準。
+ *  3. 派遣科人車動態看板（dispatch/）讀取「每日人車動態」全部分隊（action=dynall，唯讀，需 READ_KEY）。
  *
  * 設定步驟（只要做一次）：
  *  1. 打開 https://script.google.com → 「新專案」，把這整段程式貼上（取代原本內容），存檔。
@@ -20,6 +21,8 @@
  */
 
 const WRITE_KEY = '請改成你們自己的密碼';
+// 派遣科人車動態看板的讀取密碼（看板「⚙ 設定」輸入同一組）；只能讀「每日人車動態」，不能寫入
+const READ_KEY = '請改成派遣看板的讀取密碼';
 
 const CHUNK = 8000; // 每個儲存欄位的長度上限（Apps Script 單一屬性約 9KB）
 
@@ -33,6 +36,7 @@ function doGet(e) {
   const p = (e && e.parameter) || {};
   let out;
   if (p.action === 'dyn') out = JSON.stringify(writeDyn_(p));
+  else if (p.action === 'dynall') out = JSON.stringify(readDynAll_(p));
   else out = JSON.stringify(read_());
   const cb = p.callback;
   if (cb && /^[\w$.]+$/.test(cb)) {
@@ -121,6 +125,26 @@ function writeDyn_(p) {
       lock.releaseLock();
     }
     return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err && err.message || err) };
+  }
+}
+
+// ===== 讀取派遣科動態表（全部分隊，唯讀）=====
+// 只回傳「每日人車動態」上方區塊的顯示文字；不讀其他工作表（颱洪帳號管制表等）
+function readDynAll_(p) {
+  try {
+    if (!READ_KEY || READ_KEY.indexOf('請改成') === 0) return { ok: false, error: '中繼站尚未設定讀取密碼（READ_KEY）' };
+    if (p.k !== READ_KEY) return { ok: false, error: '讀取密碼錯誤' };
+    const cache = CacheService.getScriptCache();
+    const hit = cache.get('dynall');
+    if (hit) return JSON.parse(hit);
+    const sh = SpreadsheetApp.openById(DYN_SHEET_ID).getSheetByName(DYN_TAB);
+    if (!sh) return { ok: false, error: '找不到工作表「' + DYN_TAB + '」' };
+    const values = sh.getRange(1, 1, Math.min(sh.getLastRow(), 40), Math.min(sh.getLastColumn(), 40)).getDisplayValues();
+    const out = { ok: true, at: Date.now(), values: values };
+    try { cache.put('dynall', JSON.stringify(out), 15); } catch (e) {} // 15 秒快取，多台螢幕同時讀也不會超量
+    return out;
   } catch (err) {
     return { ok: false, error: String(err && err.message || err) };
   }
