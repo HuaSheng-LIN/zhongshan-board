@@ -5,6 +5,10 @@
  *  1. 值班台修改車輛狀態、志工、交接事項時，把資料存到這裡；電視每 15 秒來讀一次。
  *  2. 把中山分隊的人車動態寫入派遣科「動態表」的中山區塊。
  *     自動同步：先比對動態表是否被人工修改，有修改就不覆蓋；手動同步（force=1）以看板為準。
+ *  3. 讀取動態表中山區塊（action=dynread，需要密碼），讓看板發現人工修改並提示值班員。
+ *
+ * 測試環境：另外建一個 Apps Script 專案貼上同一份程式，只改 WRITE_KEY（用不同的測試密碼）
+ *           與 DYN_SHEET_ID（改成測試用動態表），不要指向正式動態表。
  *
  * 設定步驟（只要做一次）：
  *  1. 打開 https://script.google.com → 「新專案」，把這整段程式貼上（取代原本內容），存檔。
@@ -33,6 +37,7 @@ function doGet(e) {
   const p = (e && e.parameter) || {};
   let out;
   if (p.action === 'dyn') out = JSON.stringify(writeDyn_(p));
+  else if (p.action === 'dynread') out = JSON.stringify(readDyn_(p));
   else out = JSON.stringify(read_());
   const cb = p.callback;
   if (cb && /^[\w$.]+$/.test(cb)) {
@@ -71,25 +76,43 @@ function doPost(e) {
 //   r0+8    : 救護 | 車輛 | 人次
 //   r0+9~11 : 其他勤務 3 列（項目 | 車輛 | 人次）
 //   r0+12   : 休息班 | 人次(c0+6)
+// 開啟動態表並找出「中山」區塊，核對每一列的標題；版面不同就回傳錯誤
+function locateDyn_(p) {
+  if (p.key !== WRITE_KEY) return { error: '密碼錯誤' };
+  if (p.id !== DYN_SHEET_ID) return { error: '動態表網址與中繼站設定不符' };
+  const sh = SpreadsheetApp.openById(DYN_SHEET_ID).getSheetByName(DYN_TAB);
+  if (!sh) return { error: '找不到工作表「' + DYN_TAB + '」' };
+  const vals = sh.getRange(1, 1, Math.min(sh.getLastRow(), 200), Math.min(sh.getLastColumn(), 60)).getDisplayValues();
+  let r0 = -1, c0 = -1;
+  for (let r = 0; r < vals.length && r0 < 0; r++) for (let c = 0; c < vals[r].length; c++) {
+    if (String(vals[r][c]).trim() === DYN_UNIT) { r0 = r; c0 = c; break; }
+  }
+  if (r0 < 0) return { error: '動態表找不到「' + DYN_UNIT + '」' };
+  const lab = (dr) => String((vals[r0 + dr] || [])[c0] || '').replace(/\s/g, '');
+  const expect = { 1: '今日服勤人數', 2: '待命車輛', 4: '在隊人數', 5: '報停車輛', 6: '勤務內容', 12: '休息班' };
+  for (const dr in expect) {
+    if (lab(+dr).indexOf(expect[dr]) !== 0) return { error: '動態表版面已變更（第 ' + (r0 + +dr + 1) + ' 列應為「' + expect[dr] + '」），已停止' };
+  }
+  return { sh: sh, r0: r0, c0: c0 };
+}
+
+// 讀取動態表中山區塊目前的內容（只讀，讓看板比對是否有人工修改）
+function readDyn_(p) {
+  try {
+    const L = locateDyn_(p);
+    if (L.error) return { ok: false, error: L.error };
+    return { ok: true, block: blockNow_(L.sh, L.r0, L.c0) };
+  } catch (err) {
+    return { ok: false, error: String(err && err.message || err) };
+  }
+}
+
 function writeDyn_(p) {
   try {
-    if (p.key !== WRITE_KEY) return { ok: false, error: '密碼錯誤' };
-    if (p.id !== DYN_SHEET_ID) return { ok: false, error: '動態表網址與中繼站設定不符' };
+    const L = locateDyn_(p);
+    if (L.error) return { ok: false, error: L.error };
+    const sh = L.sh, r0 = L.r0, c0 = L.c0;
     const d = JSON.parse(p.p || '{}');
-    const sh = SpreadsheetApp.openById(DYN_SHEET_ID).getSheetByName(DYN_TAB);
-    if (!sh) return { ok: false, error: '找不到工作表「' + DYN_TAB + '」' };
-    const vals = sh.getRange(1, 1, Math.min(sh.getLastRow(), 200), Math.min(sh.getLastColumn(), 60)).getDisplayValues();
-    // 找出「中山」區塊，並核對每一列的標題，版面不同就不寫入
-    let r0 = -1, c0 = -1;
-    for (let r = 0; r < vals.length && r0 < 0; r++) for (let c = 0; c < vals[r].length; c++) {
-      if (String(vals[r][c]).trim() === DYN_UNIT) { r0 = r; c0 = c; break; }
-    }
-    if (r0 < 0) return { ok: false, error: '動態表找不到「' + DYN_UNIT + '」' };
-    const lab = (dr) => String((vals[r0 + dr] || [])[c0] || '').replace(/\s/g, '');
-    const expect = { 1: '今日服勤人數', 2: '待命車輛', 4: '在隊人數', 5: '報停車輛', 6: '勤務內容', 12: '休息班' };
-    for (const dr in expect) {
-      if (lab(+dr).indexOf(expect[dr]) !== 0) return { ok: false, error: '動態表版面已變更（第 ' + (r0 + +dr + 1) + ' 列應為「' + expect[dr] + '」），已停止寫入' };
-    }
     const lock = LockService.getScriptLock();
     lock.waitLock(10000);
     try {
@@ -98,7 +121,7 @@ function writeDyn_(p) {
         const prev = JSON.parse(p.prev || 'null');
         if (!prev) return { ok: false, conflict: true, error: '尚未建立同步基準，請先手動同步一次' };
         const cur = blockNow_(sh, r0, c0), exp = blockOf_(prev);
-        if (JSON.stringify(cur) !== JSON.stringify(exp)) return { ok: false, conflict: true, error: '動態表中山區塊有人工修改' };
+        if (JSON.stringify(cur) !== JSON.stringify(exp)) return { ok: false, conflict: true, error: '動態表中山區塊有人工修改', block: cur };
       }
       const R = (dr, dc) => sh.getRange(r0 + 1 + dr, c0 + 1 + dc);
       const six = (arr) => { const a = (arr || []).slice(0, 6).map(String); while (a.length < 6) a.push(''); return a; };
