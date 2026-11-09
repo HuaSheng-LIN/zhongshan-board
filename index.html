@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="e20a9b203d4a">
+<meta name="build" content="522061da7658">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -530,6 +530,9 @@ dialog.netDlg h3{color:#ffb38a;font-size:24px}
 #netInfo b{color:#ffd166}
 .netBox{background:var(--panel2);border-radius:8px;padding:8px 12px;margin-top:8px;font-size:15px;line-height:1.7}
 .netBox b{display:block;color:#cfd8ea;margin-bottom:2px}
+/* ===== v1.30 編組同一格多人 ===== */
+.tr .p.multi{flex-wrap:wrap;row-gap:2px}
+.tr .p .pp{display:inline-flex;align-items:center;gap:4px;margin-right:6px}
 </style>
 </head>
 <body>
@@ -894,7 +897,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.29';   // 版本號：每次發布時更新
+const APP_VER='v1.30';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -1180,6 +1183,10 @@ function carLabel(v){return v.type.replace('車','')+' '+v.name;}
 
 // 解析「勤務表（YYYY-MM）」工作表：每日一個區塊（左：火警任務編組 A-H；右：逐時勤務 J-S）
 // 這段程式同時給 Node 測試與看板 HTML 使用（看板內嵌同一份程式）
+// 同一格裡有多位人員時拆開（換行、頓號、多個空白，或「30 某某 31 某某」這種以番號開頭的寫法）
+function splitPeople(x){
+  return String(x||'').split(/[\n\r　、,，;；]+|\s{2,}/).flatMap(t=>t.trim().split(/\s+(?=\d{1,3}\s*[^\d\s])/)).map(t=>t.trim()).filter(Boolean);
+}
 function parseSched(wb, XLSX){
   const days={};
   const cellTxt=c=>String(c??'').replace(/\r/g,'').trim();
@@ -1223,7 +1230,8 @@ function parseSched(wb, XLSX){
           if(a)g=a;
           const role=r[c0+1];if(!g||!role)continue;
           if(!gmap[g]){gmap[g]={g,rows:[]};groups.push(gmap[g]);}
-          gmap[g].rows.push({role:role.replace(/\n/g,''),name:splitNames(r[c0+2]).join(' ')});
+          const ppl=splitPeople(cellTxt(r[c0+2]));
+          gmap[g].rows.push({role:role.replace(/\n/g,''),name:ppl.join('、'),names:ppl});
         }
       });
       blk.forEach(r=>{if(r[0]==='勤務備註')memo=r[1];else if(r[0]==='備註')note=r[1];else if(r[0]==='確認')check=r[1];});
@@ -1417,15 +1425,16 @@ function renderTaskSheet(k,sc){
   const filled=sc.groups.filter(g=>g.rows.some(r=>r.name)),empty=sc.groups.filter(g=>!g.rows.some(r=>r.name));
   const groups=filled.map(g=>{
     const rows=g.rows.map(r=>{
-      const cd=r.name?dutyOfName(slot,r.name):'';
-      const cls=cd==='休息'?'rest':/外出|訓練|宣導/.test(cd)?'out':'';
-      return `<div class="tr"><div class="r">${roleHtml(r.role)}</div><div class="p ${r.name?'':'empty'}">${r.name?chip(k,r.name):'—'}${cd?`<span class="cd ${cls}" title="目前時段勤務">${esc(cd)}</span>`:''}</div></div>`;}).join('');
+      const ppl=r.names||splitPeople(r.name);
+      const one=n=>{const cd=dutyOfName(slot,n),cls=cd==='休息'?'rest':/外出|訓練|宣導/.test(cd)?'out':'';
+        return chip(k,n)+(cd?`<span class="cd ${cls}" title="目前時段勤務">${esc(cd)}</span>`:'');};
+      return `<div class="tr"><div class="r">${roleHtml(r.role)}</div><div class="p ${ppl.length?'':'empty'}${ppl.length>1?' multi':''}">${ppl.length?ppl.map(n=>`<span class="pp">${one(n)}</span>`).join(''):'—'}</div></div>`;}).join('');
     return {h:`<div class="tg" style="--gc:${gColor(g.g)};flex-grow:${(g.rows||g.roles).length}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:g.rows.length+1,g:g.g};
   });
   const tot=groups.reduce((a,x)=>a+x.n,0),cols=[[],[]];let acc=0;
   groups.forEach(x=>{const c=(acc<tot/2&&acc+x.n/2<=tot/2+1)?0:1;if(c===0)acc+=x.n;else acc=1e9;cols[c].push(x.h);});
   // 未編組（對照輪休表）
-  const r=S.rot[k],inG=new Set(sc.groups.flatMap(g=>g.rows.map(x=>stripNo(x.name)).filter(Boolean)));
+  const r=S.rot[k],inG=new Set(sc.groups.flatMap(g=>g.rows.flatMap(x=>(x.names||splitPeople(x.name)).map(stripNo))).filter(Boolean));
   const free=r?[...r.on].sort((a,b)=>a.no-b.no).filter(p=>!inG.has(p.name)).map(p=>esc(pad(p.no)+' '+p.name)):[];
   document.getElementById('task').innerHTML=
     taskLayout(groups)+
@@ -1763,7 +1772,7 @@ function crewOf(v,k,slot){
   if(v.crew)return slot?(slot.cells[v.crew]||[]):[];
   const sc=S.sched[k];if(!sc)return [];
   const g=sc.groups.find(g=>g.g===v.name+'車'||g.g===v.name);
-  return g?g.rows.map(x=>x.name).filter(Boolean):[];
+  return g?g.rows.flatMap(x=>x.names||splitPeople(x.name)).filter(Boolean):[];
 }
 // 車輛出勤人數：有點選出勤人員時，只計算今日有上班的人（非上班同仁不影響上班與在隊人數）
 function onDutySet(){const r=S.rot[dutyKey(new Date())];return new Set(r?r.on.map(p=>p.name):[]);}
