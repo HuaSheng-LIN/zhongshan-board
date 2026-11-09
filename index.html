@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="522061da7658">
+<meta name="build" content="7f664f5b78f4">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -533,10 +533,94 @@ dialog.netDlg h3{color:#ffb38a;font-size:24px}
 /* ===== v1.30 編組同一格多人 ===== */
 .tr .p.multi{flex-wrap:wrap;row-gap:2px}
 .tr .p .pp{display:inline-flex;align-items:center;gap:4px;margin-right:6px}
+/* ===== v1.31 行動版 ===== */
+html.mob,html.mob body{height:auto;overflow:auto}
+html.mob body{display:block;padding:0;min-height:100vh;-webkit-text-size-adjust:100%}
+html.mob body>header,html.mob body>main,html.mob #updBar,html.mob #toast{display:none!important}
+#mob{max-width:1100px;margin:0 auto;padding:10px 10px calc(16px + env(safe-area-inset-bottom));font-size:15px}
+#mob .mHead{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#7a1418,#2a1520);border-radius:12px;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top))}
+#mob .mUnit{font-size:22px;font-weight:800}
+#mob .mDate{font-size:13px;color:#cfd8ea}
+#mob .mClock{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums}
+#mob .mLead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:8px 2px 2px}
+#mob .mLead span{font-size:13px;color:var(--muted)}
+#mob .mLead b{font-size:20px;color:#ffb347}
+#mob .mLead small{font-size:13px;color:#cfd8ea}
+#mob .mSync{font-size:12px;color:var(--green);margin:2px 2px 6px}
+#mob .mWarn{background:#b3261e;color:#fff;font-weight:800;border-radius:8px;padding:8px 12px;margin:6px 0}
+#mob .mAct{display:flex;flex-direction:column;gap:6px;margin:6px 0}
+#mob .mAct .actv{font-size:16px;padding:8px 12px}
+#mob .mAct .rb{display:none}
+#mob .mSec{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:10px}
+#mob .mSec h3{margin:0 0 8px;font-size:17px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#mob .mCars{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+#mob .mCar{background:var(--panel2);border-radius:10px;padding:8px 10px;border-left:5px solid var(--green);min-width:0}
+#mob .mCar b{font-size:26px;line-height:1.1;display:block}
+#mob .mCar .mSt{font-size:14px;font-weight:700;color:var(--green);display:block}
+#mob .mCar .mSt em{font-style:normal;font-size:12px;margin-left:4px;color:#ffd166}
+#mob .mCar small{font-size:12px;color:var(--muted)}
+#mob .mCar.st-出勤中,#mob .mCar.st-返隊中{border-left-color:var(--red);background:#3a1a22}
+#mob .mCar.st-出勤中 .mSt,#mob .mCar.st-返隊中 .mSt{color:#ff8a8c}
+#mob .mCar.t-ems.st-出勤中{border-left-color:#3b8bff;background:#10284d}
+#mob .mCar.t-ems.st-出勤中 .mSt{color:#8ec5ff}
+#mob .mCar.c-train{border-left-color:#2ec27e!important;background:#123a2a!important}
+#mob .mCar.c-train .mSt{color:#5ef0a6!important}
+#mob .mCar.st-保養,#mob .mCar.st-送修{border-left-color:#888;opacity:.8}
+#mob .mCar.st-保養 .mSt,#mob .mCar.st-送修 .mSt{color:#bbb}
+#mob .mCrew{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
+#mob .mCrew .pc,#mob .mPpl .pc,#mob .mOn .pc,#mob .mNight .pc{font-size:14px;margin:0}
+#mob .mStat{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#mob .mStat>div{background:var(--panel2);border-radius:10px;padding:8px 12px;text-align:center}
+#mob .mStat span{display:block;font-size:13px;color:var(--muted)}
+#mob .mStat b{font-size:34px}
+#mob .mStat i{font-style:normal;font-size:14px;color:var(--muted);margin-left:2px}
+#mob .mStat .low{border:2px solid #ff3b3b}#mob .mStat .low b{color:#ff6b6e}
+#mob .mStat em{display:block;font-style:normal;color:#ff6b6e;font-weight:800;font-size:13px}
+#mob .mNight{margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+#mob details{margin-top:8px}#mob summary{cursor:pointer;color:#cfd8ea;font-weight:700;padding:4px 0}
+#mob .mOn{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+#mob .mNav{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:15px}
+#mob .mNav em{font-style:normal;font-size:12px;color:var(--green)}
+#mob .mBtn{display:inline-block;padding:4px 10px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;user-select:none}
+#mob .mNow{font-size:12px}
+#mob .mRow{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid #22304d}
+#mob .mCol{flex:0 0 72px;color:var(--muted);font-size:14px;padding-top:3px}
+#mob .mPpl{display:flex;flex-wrap:wrap;gap:4px}
+#mob .mTask .tgrid{display:flex;flex-direction:column;gap:8px}
+#mob .mTask .tcol{display:flex;flex-direction:column;gap:8px}
+#mob .mTask .tg{grid-template-columns:44px 1fr}
+#mob .mTask .tg .gn{font-size:16px}
+#mob .mTask .tr{grid-template-columns:38% 1fr}
+#mob .mTask .tr .r{font-size:13px}
+#mob .mTask .tr .p{font-size:15px;flex-wrap:wrap}
+#mob .mTask .tr .p .pc{font-size:14px}
+#mob .mTask .tnote{font-size:13px;margin-top:8px;max-height:none}
+#mob .mTask .tfree,#mob .mTask .tempty{font-size:13px}
+#mob .pc{font-size:14px!important;--fs:14px}
+#mob .pc b{min-width:1.6em;font-size:1em!important}
+#mob .pc .pn{font-size:1em!important}
+#mob .mTask .tgrid,#mob .mTask .tcol{align-items:stretch!important}
+#mob .mTask .tcol>.tg{width:auto;align-self:stretch}
+#mob .pc .pn{overflow:visible;text-overflow:clip;white-space:nowrap}
+#mob .mCrew .pc{font-size:12px!important}
+#mob .mCar{overflow:hidden}
+#mob .mTask .tg{width:100%;min-width:0}
+#mob .mTask .tr{grid-template-columns:30% minmax(0,1fr)}
+#mob .mTask .tr .p{min-width:0;overflow:visible;padding:3px 6px;row-gap:3px}
+#mob .mTask .tr .p .pp{flex-wrap:wrap;max-width:100%;row-gap:2px}
+#mob .mTask .tr .p .cd{font-size:11px;white-space:nowrap;margin-left:0!important;position:static}
+#mob .mTask .tr .r{padding:3px 4px}
+#mob .mFoot{text-align:center;font-size:12px;color:var(--muted);margin-top:14px}
+@media (min-width:760px){
+  #mob .mBody{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  #mob .mCars{grid-template-columns:repeat(4,1fr)}
+}
+@media (max-width:360px){#mob .mCars{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
 
+<div id="mob" hidden></div>
 <header>
   <div class="logo">🚒</div>
   <div>
@@ -897,7 +981,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.30';   // 版本號：每次發布時更新
+const APP_VER='v1.31';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -1010,7 +1094,7 @@ function netShow(){const el=document.getElementById('netBar');if(!el)return;
   if(!netDown){el.hidden=true;return;}
   const t=new Date(netOkAt),hm=pad(t.getHours())+':'+pad(t.getMinutes());
   const off=navigator.onLine===false;
-  const msg=TV?'電視網路已中斷':off?'網路線／Wi-Fi 已中斷':'網路已中斷，可能需要重新登入員工編號';
+  const msg=MOBILE?'網路已中斷':TV?'電視網路已中斷':off?'網路線／Wi-Fi 已中斷':'網路已中斷，可能需要重新登入員工編號';
   el.innerHTML=`⚠ ${msg}<small>（最後連線 ${hm}，畫面資料可能不是最新）</small>`+
     (TV?'':`${off?'':`<button onclick="window.open(NET_LOGIN,'_blank')">🔑 開啟登入頁</button>`}<button onclick="netManual(this)">重新檢查</button>`)+(netCheckMsg?`<small class="nchk">${netCheckMsg}</small>`:'');
   el.hidden=false;}
@@ -1027,8 +1111,11 @@ function stageBlocked(url,id){
   return '';
 }
 if(!window.structuredClone)window.structuredClone=o=>JSON.parse(JSON.stringify(o));
-const TV=/[?&]tv=1/.test(location.search);
-if(TV)document.documentElement.classList.add('tv');
+// 行動版（手機、平板）：網址在 /m/ 底下；沿用電視的唯讀機制，但用手機版面
+const MOBILE=/\/m\/(index\.html)?$/.test(location.pathname)||/[?&]m=1/.test(location.search);
+const TV=/[?&]tv=1/.test(location.search)||MOBILE;
+if(TV&&!MOBILE)document.documentElement.classList.add('tv');
+if(MOBILE)document.documentElement.classList.add('mob');
 const CAR_ST=['在隊','出勤中','返隊中','保養','送修'];
 const WD='日一二三四五六';
 const V=(type,name,note,crew='')=>({type,name,note,crew,status:'在隊',since:Date.now()});
@@ -1149,6 +1236,7 @@ async function livePull(){
     }
     livePulled=true;liveAt=Date.now();liveShow('ok');
     if(window.tvReloadCheck)tvReloadCheck();
+    if(MOBILE)renderMob();
   }catch(e){liveShow('err',e.message);}
 }
 function livePushSoon(){if(TV||!S.liveUrl||!livePulled)return;clearTimeout(pushTimer);pushTimer=setTimeout(livePush,1500);}
@@ -1664,7 +1752,7 @@ function applyRot(res,label){if(!Object.keys(res.days).length)return;
   for(const kk of Object.keys(S.rot)){const [a,b,c]=kk.split('-').map(Number);if(new Date(a,b-1,c)<lim)delete S.rot[kk];}
   if(res.roster.length)S.roster=[...res.roster];
   const d=new Date();S.syncAt=Date.now();S.rotFile=`${label}（${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}）`;
-  save();renderLeader();renderHead();renderDuty();syncShow('ok');
+  save();renderLeader();renderHead();renderDuty();syncShow('ok');if(MOBILE)setTimeout(renderMob,0);
 }
 function applyImport(){if(!parsedRot)return;if(Object.keys(parsedRot.days).length)applyRot(parsedRot,'檔案：'+parsedRot.file);
   if(Object.keys(parsedRot.sched).length)applySched(parsedRot.sched,'檔案：'+parsedRot.file);dImp.close();}
@@ -1733,7 +1821,7 @@ function applySched(days,label){
   const lim=Date.now()-60*864e5;
   for(const kk of Object.keys(S.sched)){const [a,b,c]=kk.split('-').map(Number);if(new Date(a,b-1,c)<lim)delete S.sched[kk];}
   const d=new Date();S.schedFile=`${label}（${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}）`;
-  save();lastSlot=-1;renderDuty();renderNow();renderMemo();renderCars();
+  save();lastSlot=-1;renderDuty();renderNow();renderMemo();renderCars();if(MOBILE)setTimeout(renderMob,0);
 }
 async function syncOnline(manual){
   if(syncing)return;
@@ -2474,9 +2562,52 @@ let notesLogT=null;
 notesEl.addEventListener('input',()=>{S.notes=notesEl.value;save();clearTimeout(notesLogT);notesLogT=setTimeout(()=>logEvent('操作','更新值班交接事項：'+S.notes.replace(/\s+/g,' ').slice(0,80)),60000);});
 window.addEventListener('storage',()=>{S=load();renderAll();});
 
-function renderAll(){showTab();renderLeader();renderHead();unitEl.textContent=S.unit;notesEl.value=S.notes;lastSlot=-1;lastKey='';tick();renderCars();}
+// ===== 行動版畫面 =====
+let mobSlotOff=0;const mobOpen={};
+function mobSlot(n){mobSlotOff+=n;renderMob();}
+function renderMob(){
+  if(!MOBILE)return;const el=document.getElementById('mob');if(!el)return;el.hidden=false;
+  el.querySelectorAll('details[data-k]').forEach(x=>{mobOpen[x.dataset.k]=x.open;});
+  const now=Date.now(),d=new Date(),k=dutyKey(d),r=S.rot[k],sc=S.sched[k];
+  try{renderTask();}catch(e){}
+  const ci=sc&&sc.slots.length?curSlot(sc,d):-1,n=sc?sc.slots.length:0;
+  const si=ci>=0?(((ci+mobSlotOff)%n)+n)%n:-1,slot=si>=0?sc.slots[si]:null,cur=ci>=0?sc.slots[ci]:null;
+  const txt=id=>(document.getElementById(id)||{}).textContent||'';
+  const hm=t=>{const x=new Date(t);return pad(x.getHours())+':'+pad(x.getMinutes());};
+  // 頂部
+  let h=`<div class="mHead"><div><div class="mUnit">${esc(S.unit)}</div><div class="mDate">${esc(txt('date'))}</div></div><div class="mClock">${pad(d.getHours())}:${pad(d.getMinutes())}</div></div>
+  <div class="mLead"><span>今日帶隊官</span><b>${esc(txt('ldMain'))}</b>${txt('ldSub')?`<small>${esc(txt('ldSub'))}</small>`:''}</div>`;
+  h+=netDown?`<div class="mWarn">⚠ 網路已中斷，資料停在 ${hm(netOkAt)}</div>`:(liveAt?`<div class="mSync">● 已同步 ${hm(liveAt)}:${pad(new Date(liveAt).getSeconds())}</div>`:'');
+  // 出勤中
+  const act=document.getElementById('active');if(act&&act.innerHTML.trim())h+=`<div class="mAct">${act.innerHTML}</div>`;
+  // 車輛（左欄）
+  let L='',R='';
+  L+=`<section class="mSec"><h3>車輛動態</h3><div class="mCars">`+S.vehicles.map(v=>{
+    const out=v.status==='出勤中'||v.status==='返隊中';
+    const typ=v.type==='水箱車'?'t-fire':v.type==='救護車'?'t-ems':v.type==='摩托車'?'t-moto':'';
+    const crew=out&&v.crewNames&&v.crewNames.length?v.crewNames:(v.crew&&!out?crewOf(v,k,cur):[]);
+    return `<div class="mCar st-${esc(v.status)} ${typ} ${out&&isTrain(v.case)?'c-train':''}"><b>${esc(v.name)}</b><span class="mSt">${esc(v.status)}${out&&v.case?`<em>${esc(v.case)}</em>`:''}</span>${out?`<small>已 ${dur(now-v.since)}</small>`:''}${crew.length?`<div class="mCrew">${crew.map(x=>chip(k,x)).join('')}</div>`:''}</div>`;}).join('')+`</div></section>`;
+  // 人力
+  if(r){const ib=inBase(k,r),low=ib.n<=S.lowStaff;
+    L+=`<section class="mSec"><h3>人力</h3><div class="mStat"><div><span>今日上班</span><b>${r.n}</b><i>人</i></div><div class="${low?'low':''}"><span>目前在隊</span><b>${ib.n}</b><i>人</i>${low?'<em>⚠ 注意人力</em>':''}</div></div>
+    <div class="mNight">${(document.getElementById('nightduty')||{}).innerHTML||''}</div>
+    <details data-k="on"${mobOpen.on?' open':''}><summary>今日上班人員（${r.on.length} 人）</summary><div class="mOn">${(document.getElementById('onlist')||{}).innerHTML||''}</div></details></section>`;}
+  // 勤務表（一次一個時段，可切換）
+  if(slot){
+    R+=`<section class="mSec"><h3>勤務表<span class="mNav"><span class="mBtn" onclick="mobSlot(-1)">◀</span><b>${esc(slot.label)}</b>${mobSlotOff===0?'<em>目前</em>':`<span class="mBtn mNow" onclick="mobSlotOff=0;renderMob()">回目前</span>`}<span class="mBtn" onclick="mobSlot(1)">▶</span></span></h3>`+
+      (sc.cols||Object.keys(slot.cells)).map(c=>{const ns=slot.cells[c]||[];return ns.length?`<div class="mRow"><span class="mCol">${esc(c)}</span><span class="mPpl">${ns.map(x=>chip(k,x)).join('')}</span></div>`:'';}).join('')+`</section>`;
+  }
+  // 火警任務編組
+  const tk=document.getElementById('task');
+  if(tk&&tk.innerHTML.trim())R+=`<section class="mSec"><details data-k="task"${mobOpen.task!==false?' open':''}><summary>🔥 火警任務編組</summary><div class="mTask">${tk.innerHTML}</div></details></section>`;
+  h+=`<div class="mBody"><div>${L}</div><div>${R}</div></div>`;
+  h+=`<div class="mFoot">${esc(txt('appSub'))}</div>`;
+  el.innerHTML=h;
+}
+if(MOBILE)setInterval(renderMob,10000);
+function renderAll(){showTab();renderLeader();renderHead();unitEl.textContent=S.unit;notesEl.value=S.notes;lastSlot=-1;lastKey='';tick();renderCars();if(MOBILE)setTimeout(renderMob,0);}
 // ===== 等比例縮放（電視固定開啟；值班台可在設定關閉）=====
-const FIT=TV||S.pcFit!==false;
+const FIT=!MOBILE&&(TV||S.pcFit!==false);
 if(FIT){
   document.documentElement.classList.add('fit');
   // 縮放：以 1080 高的設計尺寸，依視窗高度等比例縮放，寬度自動填滿；網址可加 &scale=0.9 手動指定
@@ -2499,10 +2630,10 @@ if(FIT){
 lastShared=sharedJson();
 renderAll();dynShow();setTimeout(autoFitAll,600);if(document.fonts)document.fonts.ready.then(()=>autoFitAll());setInterval(tick,1000);syncShow(S.syncAt?'ok':'');syncOnline(false);if(!TV)keepAwake();
 // 頁面名稱與版本號（顯示在左上角分隊名稱下方）
-if(TV)document.title='中山分隊 勤務看板（電視版）';
-(()=>{const e=document.getElementById('appSub');if(e){e.textContent=`消防勤務看板 · ${TV?'電視版（唯讀）':'值班台'} · ${APP_VER}`;e.title='版本 '+APP_VER+(BUILD&&BUILD!=='__BUILD__'?'（'+BUILD+'）':'');}})();
+if(TV)document.title=MOBILE?'中山分隊 勤務看板（行動版）':'中山分隊 勤務看板（電視版）';
+(()=>{const e=document.getElementById('appSub');if(e){e.textContent=`消防勤務看板 · ${MOBILE?'行動版（唯讀）':TV?'電視版（唯讀）':'值班台'} · ${APP_VER}`;e.title='版本 '+APP_VER+(BUILD&&BUILD!=='__BUILD__'?'（'+BUILD+'）':'');}})();
 if(STAGE){document.title='【測試】'+document.title;const r=document.createElement('div');r.className='stageRibbon';r.textContent='🧪 測試環境（不影響正式看板與派遣表）';document.body.appendChild(r);}
-livePull();setInterval(livePull,TV?15000:60000);
+livePull();setInterval(livePull,MOBILE?30000:TV?15000:60000);
 document.getElementById('dSet').addEventListener('close',()=>{adminUntil=0;});
 if(!TV){logEvent('系統','看板開啟（'+APP_VER+'）');setTimeout(logFlush,8000);}
 if(!TV){setInterval(()=>dynAuto(),30000);setInterval(dynRead,180000);setTimeout(dynRead,15000);
@@ -2510,8 +2641,8 @@ if(!TV){setInterval(()=>dynAuto(),30000);setInterval(dynRead,180000);setTimeout(
 if(TV){
   let seenReload=null;window.tvReloadCheck=()=>{if(seenReload===null)seenReload=S.tvReload;else if(S.tvReload!==seenReload)hardReload();};
   notesEl.readOnly=true;
-  // 電視：右邊上半今日勤務表、下半火警任務編組；隱藏交接事項與操作提示
-  (()=>{
+  // 電視：右邊上半今日勤務表、下半火警任務編組；隱藏交接事項與操作提示（行動版不需要）
+  if(!MOBILE)(()=>{
     const $=id=>document.getElementById(id);
     S.tab='duty';showTab();
     $('pDuty').querySelector('.tabs').outerHTML='<span class="bar"></span>今日勤務表';
@@ -2530,7 +2661,7 @@ if(TV){
   addEventListener('dblclick',e=>e.preventDefault(),true);
   // 盡量讓螢幕保持開啟
   const wl=()=>{try{navigator.wakeLock&&navigator.wakeLock.request('screen').catch(()=>{});}catch(e){}};
-  wl();document.addEventListener('visibilitychange',()=>{if(!document.hidden)wl();});
+  if(!MOBILE){wl();document.addEventListener('visibilitychange',()=>{if(!document.hidden)wl();});}
   // 每天凌晨 4 點重新整理一次，避免長時間開著累積問題
   setInterval(()=>{const d=new Date();if(d.getHours()===4&&d.getMinutes()===0&&d.getSeconds()<2)hardReload();},1000);
 }
