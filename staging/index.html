@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="bb79308af7bf">
+<meta name="build" content="7455c8517ab1">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -649,6 +649,9 @@ html.tv .vfoldbtn{cursor:default}html.tv .vfoldbtn i,html.tv .vmore{display:none
 html.tv .vmini{min-height:0}
 .car .crew.cout .cw.off .pc{filter:grayscale(1);opacity:.55}
 /* ===== v1.40 勤務車救助、為民服務、破門：閃黃 ===== */
+@keyframes blinkY{50%{background:#6b5200;box-shadow:0 0 14px #ffc107aa}}
+.actv.aid{background:#3a3010;border-color:#ffc107;animation:blinkY 1.1s infinite}
+.actv.aid .tm{color:#ffe08a}
 @keyframes carY{50%{box-shadow:inset 0 0 0 999px #ffc10766}}
 .car.st-出勤中.c-aid{animation:carY 1.2s infinite;border-left-color:#ffc107}
 .car.st-出勤中.c-aid .s{color:#ffd166}
@@ -2297,7 +2300,7 @@ function renderActive(){
     if(fire.length&&g.cars.length>fire.length)btn.push(`<button onclick="returnCars('${g.id}','fire')">${fire.map(v=>v.name).join('+')} 返隊</button>`);
     if(ems.length)btn.push(`<button onclick="returnCars('${g.id}','ems')">救護返隊</button>`);
     if(g.cars.length>1||!ems.length)btn.push(`<button class="all" onclick="returnCars('${g.id}','all')">${g.cars.length>1?'整組返隊':'返隊'}</button>`);
-    const kind=isTrain(g.item)?'train':g.item==='救護'||(!fire.length&&ems.length&&g.cars.length===ems.length&&g.item!=='火警')?'ems':'fire';
+    const kind=isTrain(g.item)?'train':isAid(g.item)&&!g.cars.some(v=>v.type==='救護車')?'aid':g.item==='救護'||(!fire.length&&ems.length&&g.cars.length===ems.length&&g.item!=='火警')?'ems':'fire';
     return `<div class="actv ${kind}">${icon} <b>${esc(g.item)}</b>｜${g.cars.map(v=>esc(v.name)).join('+')}<span class="tm">${dur(now-g.since)}</span><span class="rb">${btn.join('')}</span></div>`;
   }).join('');
 }
