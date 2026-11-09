@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="fdd538ca7431">
+<meta name="build" content="7455c8517ab1">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -628,13 +628,14 @@ html.mob body>header,html.mob body>main,html.mob #updBar,html.mob #toast{display
 #unauthBar button{font-family:inherit;font-size:16px;font-weight:700;padding:6px 14px;border-radius:8px;border:2px solid #fff;background:#0004;color:#fff;cursor:pointer}
 html.tv #unauthBar,html.mob #unauthBar{display:none!important}
 /* ===== v1.36 出勤人員一行兩人、放不下顯示「＋N 人」 ===== */
-.car .crew.cout{display:grid;grid-template-columns:1fr 1fr;gap:2px 4px;align-items:center}
-.car .crew.cout.one{grid-template-columns:1fr}
+.car .crew.cout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:3px 4px;align-items:center;justify-items:start}
+.car .crew.cout.one{grid-template-columns:minmax(0,1fr)}
 .car .crew.cout .ck{grid-column:1/-1}
 .car .crew.cout .cw{display:flex;align-items:center;min-width:0;gap:2px}
 .car .crew.cout .cw[hidden]{display:none}
-#cars .car .crew.cout .pc{font-size:var(--cf,14px)!important;margin:0;max-width:100%}
-html.tv #cars .car .crew.cout .pc{font-size:var(--cf,16px)!important}
+#cars .car .crew.cout .pc{font-size:var(--cf,19px)!important;margin:0;max-width:100%}
+html.tv #cars .car .crew.cout .pc{font-size:var(--cf,21px)!important}
+.car .crew .cnone{font-size:13px;color:var(--muted)}
 .car .crew.cout .cw{position:relative}
 .car .crew.cout .offd{position:absolute;right:-2px;top:-7px;font-size:9px!important;line-height:1.3;margin:0;padding:0 3px;border-radius:4px;background:#3a3010;color:#ffd166;white-space:nowrap;pointer-events:none}
 .car .crew.cout .more{grid-column:1/-1;font-size:13px;font-weight:700;color:#ffd166}
@@ -653,6 +654,15 @@ html.tv .vfoldbtn{cursor:default}html.tv .vfoldbtn i,html.tv .vmore{display:none
 .vmini .vmore{margin-left:auto;font-size:13px;color:var(--blue);cursor:pointer}
 html.tv .vmini{min-height:0}
 .car .crew.cout .cw.off .pc{filter:grayscale(1);opacity:.55}
+/* ===== v1.40 勤務車救助、為民服務、破門：閃黃 ===== */
+@keyframes blinkY{50%{background:#6b5200;box-shadow:0 0 14px #ffc107aa}}
+.actv.aid{background:#3a3010;border-color:#ffc107;animation:blinkY 1.1s infinite}
+.actv.aid .tm{color:#ffe08a}
+@keyframes carY{50%{box-shadow:inset 0 0 0 999px #ffc10766}}
+.car.st-出勤中.c-aid{animation:carY 1.2s infinite;border-left-color:#ffc107}
+.car.st-出勤中.c-aid .s{color:#ffd166}
+/* ===== v1.39 勤務車火警出勤：與水箱車相同閃紅 ===== */
+.car.st-出勤中.c-fire{animation:carR 1.2s infinite}
 </style>
 </head>
 <body>
@@ -1019,7 +1029,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.37';   // 版本號：每次發布時更新
+const APP_VER='v1.40';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -2006,11 +2016,11 @@ function renderCars(){
   const fold=t=>t==='摩托車'&&S.motoFold!==false;
   document.getElementById('cars').innerHTML=types.map(t=>fold(t)?motoBar(t):`<div class="vgroup">${t==='摩托車'?`<div class="vlabel vfoldbtn" onclick="motoToggle()" title="收合摩托車">${esc(t)}<i>▲</i></div>`:`<div class="vlabel">${esc(t)}</div>`}<div class="cars" style="grid-template-columns:repeat(${Math.min(3,S.vehicles.filter(v=>v.type===t).length)},minmax(0,1fr))">`+
     S.vehicles.map((v,i)=>{const a=artOf(v);return v.type!==t?'':`
-      <div class="car st-${v.status} ${a?'art':''}${a&&a[0]==='p'?' photo':''} ${v.type==='水箱車'?'t-fire':v.type==='救護車'?'t-ems':v.type==='摩托車'?'t-moto':''} ${(v.status==='出勤中'||v.status==='返隊中')&&isTrain(v.case)?'c-train':''}" ${a?`style="--art:${VEH_URL[a].replace(/"/g,'&quot;')}"`:''} onclick="openCar(${i})">
+      <div class="car st-${v.status} ${a?'art':''}${a&&a[0]==='p'?' photo':''} ${v.type==='水箱車'?'t-fire':v.type==='救護車'?'t-ems':v.type==='摩托車'?'t-moto':''} ${(v.status==='出勤中'||v.status==='返隊中')&&isTrain(v.case)?'c-train':''} ${v.type==='勤務車'?(v.case==='火警'?'c-fire':isAid(v.case)?'c-aid':''):''}" ${a?`style="--art:${VEH_URL[a].replace(/"/g,'&quot;')}"`:''} onclick="openCar(${i})">
         <div class="n">${esc(v.name)}${v.note?`<small>${esc(v.note)}</small>`:''}</div>
         <div class="s">${v.status}${(v.status==='出勤中'||v.status==='返隊中')&&v.case?`<small>${esc(v.case)}</small>`:''}</div>
         <div class="d">${v.status==='在隊'?'&nbsp;':'已 '+dur(now-v.since)}</div>${crewHtml(v)}</div>`;}).join('')+'</div></div>').join('');
-  setTimeout(fitCrew,0);
+  fitCrew();   // 立即調整（不延後），避免畫面先出現原尺寸再縮小而閃爍
 }
 // 摩托車收合：只顯示一條精簡列（車號＋狀態），點箭頭展開
 function motoBar(t){
@@ -2021,31 +2031,31 @@ function motoBar(t){
     `<span class="vmore" onclick="motoToggle()">展開 ▼</span></div></div>`;
 }
 function motoToggle(){if(TV)return;S.motoFold=S.motoFold===false;save();renderCars();}
-// 出勤人員：一行兩人；卡片放不下時，最後顯示「＋N 人」，不讓字卡被切掉
+// 出勤人員字卡：依卡片空間取最大字級（與當班人員字卡同大為上限）
+// 救護車與兩人以下一行一人（與 92 當班人員相同）；三人以上一行兩人；放不下才顯示「＋N 人」
+const crewFitCache={};
 function fitCrew(){
   document.querySelectorAll('#cars .car .crew.cout').forEach(cr=>{
     const card=cr.closest('.car');if(!card)return;
-    cr.classList.remove('one');cr.style.removeProperty('--cf');cr.querySelectorAll('.cw').forEach(x=>x.hidden=false);const old=cr.querySelector('.more');if(old)old.remove();
-    // 名字是否被擠壓：字卡實際寬度小於應有寬度
-    // （「非上班」是字卡右上角的小標籤，不占寬度）
-    const cut=()=>[...cr.querySelectorAll('.cw')].some(x=>{const pc=x.querySelector('.pc');return (pc&&(pc.scrollWidth>pc.offsetWidth+1||[...pc.children].some(c=>c.scrollWidth>c.offsetWidth+1)));});
-    // 先維持一行兩人、逐步縮小字體（最小 12px）；還是放不下才改一行一人
-    const f0=parseFloat(getComputedStyle(cr.querySelector('.pc')||cr).fontSize);
-    for(let f=f0-1;cut()&&f>=12;f--)cr.style.setProperty('--cf',f+'px');
-    if(cut()){cr.classList.add('one');cr.style.removeProperty('--cf');for(let f=f0-1;cut()&&f>=10;f--)cr.style.setProperty('--cf',f+'px');}
-    const items=[...cr.querySelectorAll('.cw')];let hid=0;
-    // 可見範圍：卡片與外層（車種列、車輛面板）中最小的下緣
-    // 可見範圍：卡片、所屬車種列，以及會裁切內容的外層
+    const items=[...cr.querySelectorAll('.cw')],n=items.length;
     const clips=[card];for(let e=card.parentElement;e&&e!==document.body;e=e.parentElement){if(/hidden|auto|scroll|clip/.test(getComputedStyle(e).overflowY))clips.push(e);if(e.classList.contains('panel'))break;}
     const lim=()=>Math.min(...clips.map(e=>e.getBoundingClientRect().bottom));
     const over=()=>cr.getBoundingClientRect().bottom>lim()-2;
-    let more=null;
-    while(over()&&items.length-hid>1){
-      items[items.length-1-hid].hidden=true;hid++;
-      if(!more){more=document.createElement('span');more.className='more';cr.appendChild(more);}
-      more.textContent=`＋${hid} 人`;
-      if(over()&&items.length-hid>1)continue;
-    }
+    const cr0=()=>Math.min(cr.getBoundingClientRect().right,card.getBoundingClientRect().right);
+    const cut=()=>items.some(x=>{if(x.hidden)return false;const pc=x.querySelector('.pc');if(!pc)return false;const pr=pc.getBoundingClientRect();
+      return pc.scrollWidth>pc.offsetWidth+1||[...pc.children].some(c=>c.scrollWidth>c.offsetWidth+1)||pr.right>x.getBoundingClientRect().right+1||pr.right>cr0()+1;});
+    const set=(one,f,hid)=>{cr.classList.toggle('one',one);cr.style.setProperty('--cf',f+'px');items.forEach((x,i)=>x.hidden=i>=n-hid);
+      let m=cr.querySelector('.more');if(hid){if(!m){m=document.createElement('span');m.className='more';cr.appendChild(m);}m.textContent=`＋${hid} 人`;}else if(m)m.remove();};
+    const sig=card.getBoundingClientRect().width.toFixed(0)+'x'+lim().toFixed(0)+'|'+items.map(x=>x.textContent).join(',');
+    const key=card.querySelector('.n').textContent;
+    const hit=crewFitCache[key];if(hit&&hit.sig===sig){set(hit.one,hit.f,hit.hid);return;}
+    const fMax=TV?21:19,fMin=11,oneFirst=card.classList.contains('t-ems')||n<=2;
+    // 救護車固定一行一人；其他車兩種排法都試，選字級較大的（同字級時兩人以下用一行一人）
+    const plans=card.classList.contains('t-ems')?[true]:[true,false];
+    for(let hid=0;hid<n;hid++){let best=null;
+      for(const one of plans)for(let f=fMax;f>=fMin;f--){set(one,f,hid);if(!cut()&&!over()){if(!best||f>best.f||(f===best.f&&one===(n<=2)))best={one,f};break;}}
+      if(best){set(best.one,best.f,hid);crewFitCache[key]={sig,one:best.one,f:best.f,hid};return;}}
+    set(true,fMin,n-1);crewFitCache[key]={sig,one:true,f:fMin,hid:n-1};
   });
 }
 // 車輛側面插圖（風格化 SVG，車頭朝右；無品牌標誌）
@@ -2159,14 +2169,17 @@ function crewHtml(v){
   const btn=is91&&!TV&&!outCrew?`<button class="vbtn" onclick="event.stopPropagation();addVol()" title="新增協勤志工">＋ 志工</button>`:'';
   return crewHtml0(v)+vh+btn;
 }
+// 某人是否正隨其他車輛出勤（以目前出勤為準，不再列在原本排班的車上）
+function busyOn(name,self){const nm=stripNo(name);
+  return S.vehicles.some(o=>o!==self&&(o.status==='出勤中'||o.status==='返隊中')&&(o.crewNames||[]).some(x=>stripNo(x)===nm));}
 function crewHtml0(v){
   if((v.status==='出勤中'||v.status==='返隊中')&&v.crewNames&&v.crewNames.length)
     return `<div class="crew cout"><span class="ck">出勤人員</span>${(()=>{const on=onDutySet();return v.crewNames.map(n=>`<span class="cw${on.has(n)?'':' off'}"${on.has(n)?'':' title="非上班人員（不計入在隊人數）"'}>${chip(dutyKey(new Date()),n)}</span>`).join('');})()}</div>`;
   if(!v.crew)return '';
   const d=new Date(),sc=S.sched[dutyKey(d)];
   if(!sc||!sc.slots.length)return `<div class="crew"><span class="ck">${esc(v.crew)}</span>—</div>`;
-  const list=(sc.slots[curSlot(sc,d)].cells[v.crew]||[]);
-  return `<div class="crew"><span class="ck">${esc(v.crew)}</span>${list.length?list.map(x=>chip(dutyKey(d),x)).join(''):'—'}</div>`;
+  const list=(sc.slots[curSlot(sc,d)].cells[v.crew]||[]).filter(x=>!busyOn(x,v));
+  return `<div class="crew"><span class="ck">${esc(v.crew)}</span>${list.length?list.map(x=>chip(dutyKey(d),x)).join(''):'<span class="cnone">當班人員出勤中</span>'}</div>`;
 }
 let carIdx=0;
 function openCar(i){
@@ -2183,8 +2196,9 @@ function setCar(s){
 }
 
 // ===== 出動 =====
-const CASES=['火警','救護','破門','救助','訓練','其他'];
+const CASES=['火警','救護','破門','救助','為民服務','訓練','其他'];
 const isTrain=c=>/訓練/.test(c||'');
+const isAid=c=>/救助|為民服務|破門/.test(c||'');   // 救助、為民服務、破門（含「其他」自行輸入的文字）
 let dp={type:'火警',sel:{}};
 function carBy(n){return S.vehicles.find(v=>v.name===n);}
 function availCar(v){return v.status==='在隊';}
@@ -2292,7 +2306,7 @@ function renderActive(){
     if(fire.length&&g.cars.length>fire.length)btn.push(`<button onclick="returnCars('${g.id}','fire')">${fire.map(v=>v.name).join('+')} 返隊</button>`);
     if(ems.length)btn.push(`<button onclick="returnCars('${g.id}','ems')">救護返隊</button>`);
     if(g.cars.length>1||!ems.length)btn.push(`<button class="all" onclick="returnCars('${g.id}','all')">${g.cars.length>1?'整組返隊':'返隊'}</button>`);
-    const kind=isTrain(g.item)?'train':g.item==='救護'||(!fire.length&&ems.length&&g.cars.length===ems.length&&g.item!=='火警')?'ems':'fire';
+    const kind=isTrain(g.item)?'train':isAid(g.item)&&!g.cars.some(v=>v.type==='救護車')?'aid':g.item==='救護'||(!fire.length&&ems.length&&g.cars.length===ems.length&&g.item!=='火警')?'ems':'fire';
     return `<div class="actv ${kind}">${icon} <b>${esc(g.item)}</b>｜${g.cars.map(v=>esc(v.name)).join('+')}<span class="tm">${dur(now-g.since)}</span><span class="rb">${btn.join('')}</span></div>`;
   }).join('');
 }
@@ -2699,7 +2713,7 @@ function renderMob(){
   L+=`<section class="mSec"><h3>車輛動態</h3><div class="mCars">`+S.vehicles.map(v=>{
     const out=v.status==='出勤中'||v.status==='返隊中';
     const typ=v.type==='水箱車'?'t-fire':v.type==='救護車'?'t-ems':v.type==='摩托車'?'t-moto':'';
-    const crew=out&&v.crewNames&&v.crewNames.length?v.crewNames:(v.crew&&!out?crewOf(v,k,cur):[]);
+    const crew=out&&v.crewNames&&v.crewNames.length?v.crewNames:(v.crew&&!out?crewOf(v,k,cur).filter(x=>!busyOn(x,v)):[]);
     return `<div class="mCar st-${esc(v.status)} ${typ} ${out&&isTrain(v.case)?'c-train':''}"><b>${esc(v.name)}</b><span class="mSt">${esc(v.status)}${out&&v.case?`<em>${esc(v.case)}</em>`:''}</span>${out?`<small>已 ${dur(now-v.since)}</small>`:''}${crew.length?`<div class="mCrew">${crew.map(x=>chip(k,x)).join('')}</div>`:''}</div>`;}).join('')+`</div></section>`;
   // 人力
   if(r){const ib=inBase(k,r),low=ib.n<=S.lowStaff;
