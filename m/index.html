@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="9ab56d009066">
+<meta name="build" content="bf9e5f86f515">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -993,7 +993,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.32';   // 版本號：每次發布時更新
+const APP_VER='v1.34';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -1523,13 +1523,35 @@ function gLabel(g){const m=g.match(/^(\d+)(.*)$/);return m?`${m[1]}<br>${esc(m[2
 function renderTaskSheet(k,sc){
   const isToday=viewOff===0,slot=isToday?sc.slots[curSlot(sc,new Date())]:null;
   const filled=sc.groups.filter(g=>g.rows.some(r=>r.name)),empty=sc.groups.filter(g=>!g.rows.some(r=>r.name));
-  const groups=filled.map(g=>{
+  // 目前的帶隊官（白天／18:00 後，與看板上方相同）：11 車以外，帶隊官不排在駕駛位置
+  const ldx=leadersOf(k),hN=new Date().getHours(),ngt=hN>=NIGHT_FROM||hN<dayStart();
+  const ldName=ldx?((((ngt&&ldx.night)?ldx.night:(ldx.day||ldx.night))||{}).name||''):'';
+  const isLd=n=>!!ldName&&stripNo(n)===ldName;
+  const pplOf=r=>r.names||splitPeople(r.name);
+  // 救護車（91、92…）與 86 車：固定「駕駛＋其他」，表上的人依填寫順序排入（第一位非帶隊官的人當駕駛），不管原本填在哪一格
+  const orderRows=g=>{const ppl=g.rows.flatMap(pplOf),di=ppl.findIndex(n=>!isLd(n));
+    const drv=di>=0?ppl[di]:'',rest=ppl.filter((_,i)=>i!==di);
+    const crewRole=(g.rows.find(r=>!/^駕駛/.test(r.role))||{}).role||(/^9\d/.test(g.g)?'救護員':'隊員');
+    const rows=[{role:'駕駛',names:drv?[drv]:[],name:drv},...rest.map(n=>({role:crewRole,names:[n],name:n}))];
+    while(rows.length<2)rows.push({role:crewRole,names:[],name:''});
+    return rows;};
+  // 其他車（11 車除外）：駕駛格若是帶隊官，與同車下一位非帶隊官的人對調
+  const noLeaderDriver=g=>{const rows=g.rows.map(r=>({...r,names:[...pplOf(r)]}));
+    rows.forEach(r=>{if(!/^駕駛/.test(r.role))return;r.names.forEach((n,i)=>{if(!isLd(n))return;
+      for(const o of rows){if(o===r)continue;const j=o.names.findIndex(x=>!isLd(x));if(j>=0){[r.names[i],o.names[j]]=[o.names[j],r.names[i]];return;}}
+      // 同車沒有其他人可對調：帶隊官移到非駕駛位置，駕駛留空
+      r.names.splice(i,1);const o=rows.find(x=>!/^駕駛/.test(x.role));if(o)o.names.push(n);else rows.push({role:'隊員',names:[n]});});});
+    rows.forEach(r=>{r.name=r.names.join('、');});return rows;};
+  const groups=filled.map(g0=>{
+    const g=/^9\d|^86/.test(g0.g)?{...g0,rows:orderRows(g0)}:/^11/.test(g0.g)?g0:{...g0,rows:noLeaderDriver(g0)};
     const rows=g.rows.map(r=>{
       const ppl=r.names||splitPeople(r.name);
       const one=n=>{const cd=dutyOfName(slot,n),cls=cd==='休息'?'rest':/外出|訓練|宣導/.test(cd)?'out':'';
         return chip(k,n)+(cd?`<span class="cd ${cls}" title="目前時段勤務">${esc(cd)}</span>`:'');};
-      return `<div class="tr"><div class="r">${roleHtml(r.role)}</div><div class="p ${ppl.length?'':'empty'}${ppl.length>1?' multi':''}">${ppl.length?ppl.map(n=>`<span class="pp">${one(n)}</span>`).join(''):'—'}</div></div>`;}).join('');
-    return {h:`<div class="tg" style="--gc:${gColor(g.g)};flex-grow:${(g.rows||g.roles).length}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:g.rows.length+1,g:g.g};
+      return `<div class="tr"${ppl.length>1?` style="flex-grow:${1+0.9*(ppl.length-1)}"`:''}><div class="r">${roleHtml(r.role)}</div><div class="p ${ppl.length?'':'empty'}${ppl.length>1?' multi':''}">${ppl.length?ppl.map(n=>`<span class="pp">${one(n)}</span>`).join(''):'—'}</div></div>`;}).join('');
+    // 高度依人數分配：同一格有多人時給較多高度，避免被切掉
+    const wt=g.rows.reduce((t,r)=>{const n=(r.names||splitPeople(r.name)).length;return t+(n>1?1+0.9*(n-1):1);},0);
+    return {h:`<div class="tg" style="--gc:${gColor(g.g)};flex-grow:${wt}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:wt+1,g:g.g};
   });
   const tot=groups.reduce((a,x)=>a+x.n,0),cols=[[],[]];let acc=0;
   groups.forEach(x=>{const c=(acc<tot/2&&acc+x.n/2<=tot/2+1)?0:1;if(c===0)acc+=x.n;else acc=1e9;cols[c].push(x.h);});
