@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="39d738b9a634">
+<meta name="build" content="4a88d099d194">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -343,7 +343,9 @@ html.tv #hcIn .bx .warn{font-size:30px}
 .dpcars{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .dpcar{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:17px}
 .dpcar.on{border-color:var(--red);background:#3a1a22}
-.dpcar.busy{opacity:.4}
+.dpcar.busy{opacity:.55;filter:grayscale(1);cursor:not-allowed}
+.dpcar .dpbusy{font-style:normal;font-size:12px;font-weight:700;margin-left:6px;padding:1px 7px;border-radius:5px;background:#555;color:#fff;white-space:nowrap}
+.preset button.custom{border-style:dashed}
 .dpcar input[type=checkbox]{width:20px;height:20px}
 .dpcar input[type=number]{width:56px;padding:4px;font-size:16px}
 .dpcar b{flex:1}
@@ -1030,7 +1032,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.41';   // 版本號：每次發布時更新
+const APP_VER='v1.42';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -2232,17 +2234,20 @@ function applyPreset(cars){
   }
   dp.sel={};cars.forEach(n=>{const v=carBy(n);if(v)dp.sel[n]=v.seats||2;});
 }
+// 自選：清除所有勾選，從零開始選車
+function dpCustom(){dp.sel={};dp.crew={};drawDispatch();}
 function drawDispatch(){
   document.getElementById('dpTypes').innerHTML=CASES.map(t=>`<button class="${dp.type===t?'on':''}" onclick="setDpType('${t}')">${t}</button>`).join('');
   const o=document.getElementById('dpOther');o.style.display=dp.type==='其他'?'':'none';
   let ph='';
   if(dp.type==='火警'){const f=firePresets();
-    ph=`<div class="preset">${f.list.map(p=>`<button class="${p.label===f.rec?'rec':''}" onclick='applyPreset(${JSON.stringify(p.cars)});drawDispatch()'>${p.label}<small>${p.note}${p.label===f.rec?'・建議':''}</small></button>`).join('')}</div>
+    ph=`<div class="preset">${f.list.map(p=>`<button class="${p.label===f.rec?'rec':''}" onclick='applyPreset(${JSON.stringify(p.cars)});drawDispatch()'>${p.label}<small>${p.note}${p.label===f.rec?'・建議':''}</small></button>`).join('')}<button class="custom" onclick="dpCustom()">自選<small>清除勾選，自行選車</small></button></div>
       <div class="hint" style="margin-top:4px">目前在隊 ${f.ib} 人；黃框為依人力自動建議的組合</div>`;}
+  else ph=`<div class="preset"><button class="custom" onclick="dpCustom()">自選<small>清除勾選，自行選車</small></button></div>`;
   document.getElementById('dpPreset').innerHTML=ph;
   document.getElementById('dpCars').innerHTML=S.vehicles.map(v=>{const on=v.name in dp.sel,busy=!availCar(v);
     return `<label class="dpcar ${on?'on':''} ${busy?'busy':''}"><input type="checkbox" ${on?'checked':''} ${busy?'disabled':''} onchange="dpToggle('${v.name}',this.checked)">
-      <b>${esc(v.name)}<span class="hint"> ${esc(v.type)}${busy?'・'+esc(v.status):''}</span></b>
+      <b>${esc(v.name)}<span class="hint"> ${esc(v.type)}</span>${busy?`<em class="dpbusy">${esc(v.status)}${v.case?'・'+esc(v.case):''}</em>`:''}</b>
       <input type="number" min="0" max="20" value="${on?dp.sel[v.name]:(v.seats||0)}" ${on?'':'disabled'} oninput="dp.sel['${v.name}']=Math.max(0,+this.value||0);dpSum()"> 人
       ${on?`<div class="who"><button type="button" class="whob" onclick="event.preventDefault();event.stopPropagation();openCrew('${v.name}')">👤 選人</button>${(dp.crew[v.name]||[]).map(n=>chip(dutyKey(new Date()),n)).join('')}</div>`:''}</label>`;}).join('');
   dpSum();
