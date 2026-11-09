@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="fdf15f8f0422">
+<meta name="build" content="a4b172d8806b">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -621,6 +621,17 @@ html.mob body>header,html.mob body>main,html.mob #updBar,html.mob #toast{display
 #unauthBar[hidden]{display:none}
 #unauthBar button{font-family:inherit;font-size:16px;font-weight:700;padding:6px 14px;border-radius:8px;border:2px solid #fff;background:#0004;color:#fff;cursor:pointer}
 html.tv #unauthBar,html.mob #unauthBar{display:none!important}
+/* ===== v1.36 出勤人員一行兩人、放不下顯示「＋N 人」 ===== */
+.car .crew.cout{display:grid;grid-template-columns:1fr 1fr;gap:2px 4px;align-items:center}
+.car .crew.cout.one{grid-template-columns:1fr}
+.car .crew.cout .ck{grid-column:1/-1}
+.car .crew.cout .cw{display:flex;align-items:center;min-width:0;gap:2px}
+.car .crew.cout .cw[hidden]{display:none}
+#cars .car .crew.cout .pc{font-size:var(--cf,14px)!important;margin:0;max-width:100%}
+html.tv #cars .car .crew.cout .pc{font-size:var(--cf,16px)!important}
+.car .crew.cout .cw{position:relative}
+.car .crew.cout .offd{position:absolute;right:-2px;top:-7px;font-size:9px!important;line-height:1.3;margin:0;padding:0 3px;border-radius:4px;background:#3a3010;color:#ffd166;white-space:nowrap;pointer-events:none}
+.car .crew.cout .more{grid-column:1/-1;font-size:13px;font-weight:700;color:#ffd166}
 </style>
 </head>
 <body>
@@ -987,7 +998,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.35';   // 版本號：每次發布時更新
+const APP_VER='v1.36';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -1977,6 +1988,34 @@ function renderCars(){
         <div class="n">${esc(v.name)}${v.note?`<small>${esc(v.note)}</small>`:''}</div>
         <div class="s">${v.status}${(v.status==='出勤中'||v.status==='返隊中')&&v.case?`<small>${esc(v.case)}</small>`:''}</div>
         <div class="d">${v.status==='在隊'?'&nbsp;':'已 '+dur(now-v.since)}</div>${crewHtml(v)}</div>`;}).join('')+'</div></div>').join('');
+  setTimeout(fitCrew,0);
+}
+// 出勤人員：一行兩人；卡片放不下時，最後顯示「＋N 人」，不讓字卡被切掉
+function fitCrew(){
+  document.querySelectorAll('#cars .car .crew.cout').forEach(cr=>{
+    const card=cr.closest('.car');if(!card)return;
+    cr.classList.remove('one');cr.style.removeProperty('--cf');cr.querySelectorAll('.cw').forEach(x=>x.hidden=false);const old=cr.querySelector('.more');if(old)old.remove();
+    // 名字是否被擠壓：字卡實際寬度小於應有寬度
+    // （「非上班」是字卡右上角的小標籤，不占寬度）
+    const cut=()=>[...cr.querySelectorAll('.cw')].some(x=>{const pc=x.querySelector('.pc');return (pc&&(pc.scrollWidth>pc.offsetWidth+1||[...pc.children].some(c=>c.scrollWidth>c.offsetWidth+1)));});
+    // 先維持一行兩人、逐步縮小字體（最小 12px）；還是放不下才改一行一人
+    const f0=parseFloat(getComputedStyle(cr.querySelector('.pc')||cr).fontSize);
+    for(let f=f0-1;cut()&&f>=12;f--)cr.style.setProperty('--cf',f+'px');
+    if(cut()){cr.classList.add('one');cr.style.removeProperty('--cf');for(let f=f0-1;cut()&&f>=10;f--)cr.style.setProperty('--cf',f+'px');}
+    const items=[...cr.querySelectorAll('.cw')];let hid=0;
+    // 可見範圍：卡片與外層（車種列、車輛面板）中最小的下緣
+    // 可見範圍：卡片、所屬車種列，以及會裁切內容的外層
+    const clips=[card];for(let e=card.parentElement;e&&e!==document.body;e=e.parentElement){if(/hidden|auto|scroll|clip/.test(getComputedStyle(e).overflowY))clips.push(e);if(e.classList.contains('panel'))break;}
+    const lim=()=>Math.min(...clips.map(e=>e.getBoundingClientRect().bottom));
+    const over=()=>cr.getBoundingClientRect().bottom>lim()-2;
+    let more=null;
+    while(over()&&items.length-hid>1){
+      items[items.length-1-hid].hidden=true;hid++;
+      if(!more){more=document.createElement('span');more.className='more';cr.appendChild(more);}
+      more.textContent=`＋${hid} 人`;
+      if(over()&&items.length-hid>1)continue;
+    }
+  });
 }
 // 車輛側面插圖（風格化 SVG，車頭朝右；無品牌標誌）
 const VEH_SVG={
@@ -2089,7 +2128,7 @@ function crewHtml(v){
 }
 function crewHtml0(v){
   if((v.status==='出勤中'||v.status==='返隊中')&&v.crewNames&&v.crewNames.length)
-    return `<div class="crew"><span class="ck">出勤人員</span>${(()=>{const on=onDutySet();return v.crewNames.map(n=>chip(dutyKey(new Date()),n)+(on.has(n)?'':'<small class="offd">非上班</small>')).join('');})()}</div>`;
+    return `<div class="crew cout"><span class="ck">出勤人員</span>${(()=>{const on=onDutySet();return v.crewNames.map(n=>`<span class="cw">${chip(dutyKey(new Date()),n)}${on.has(n)?'':'<small class="offd">非上班</small>'}</span>`).join('');})()}</div>`;
   if(!v.crew)return '';
   const d=new Date(),sc=S.sched[dutyKey(d)];
   if(!sc||!sc.slots.length)return `<div class="crew"><span class="ck">${esc(v.crew)}</span>—</div>`;
