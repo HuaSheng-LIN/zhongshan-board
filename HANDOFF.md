@@ -2,7 +2,7 @@
 
 維護者：中山 林華聖
 整理日期：2026-11-06（台北時間）
-目前版本：v1.30（commit 04cbff8，待實機驗收；含 v1.25–v1.29）；上一個穩定版 v1.24（05de955）
+目前版本：v1.31（commit f7e82c6，待實機驗收；含 v1.25–v1.30）；上一個穩定版 v1.24（05de955）
 本文件不保存密碼、Token 或其他機密值。
 
 ## Google Drive 維運紀錄
@@ -23,6 +23,8 @@
 |---|---|
 | 值班台 | https://huasheng-lin.github.io/zhongshan-board/ |
 | 電視（唯讀） | https://huasheng-lin.github.io/zhongshan-board/tv（= ?tv=1） |
+| 手機／平板（唯讀） | https://huasheng-lin.github.io/zhongshan-board/m/（可加到主畫面，有自己的 manifest；= ?m=1） |
+| 測試版 | https://huasheng-lin.github.io/zhongshan-board/staging/（電視 /staging/tv/、行動 /staging/m/） |
 | 程式 | GitHub HuaSheng-LIN/zhongshan-board，main 根目錄由 GitHub Pages 發佈；index.html 為單一檔（內嵌 SheetJS 0.18.5） |
 | 即時同步中繼站 | Google Apps Script 網頁應用程式（apps-script/Code.gs；執行身分：我；存取：所有人）<br>https://script.google.com/macros/s/AKfycby2hOW3QFGmh5cix-1jeBkwVl7UrBJ2LRNswfnQlyxLHS_ry-sDt7YQDftfukHwzWVv/exec |
 | 輪休預定表 | 12Elx8VPPKIexvkFN0-gNPH8C8vuJ0wezQHTeJfbQqSo（擁有者 luke70.tw） |
@@ -98,6 +100,7 @@
 | v1.28 | 11/08 | a5f7789 | 電視版頁面名稱改為「中山分隊 勤務看板（電視版）」；左上角分隊名稱下方顯示「消防勤務看板 · 值班台／電視版（唯讀） · 版本號」，滑鼠停留可看版本標記。版本號在 src 的 `APP_VER`，**每次發布都要更新** | 本機測試通過；藉由 v1.27 自動更新上線（不需人工重新整理） |
 | v1.29 | 11/09 | 83d575a…8679858（測試版）、0ec1fe1（正式） | ①系統紀錄：出勤、返隊、車輛狀態、動態表寫入與人工修改、網路中斷／恢復、同步失敗、自動更新、防螢幕保護、志工、帶隊官、設定、交接事項等事件，附依勤務表推定的時段值班；先存本機佇列（`KEY.logq`），經中繼站 logadd 寫入維護者私人試算表（每月一分頁、重送不重複、超過 12 個月自動刪除）；從「⚙ 設定」→「📜 系統紀錄」查看（logread）。②管理密碼：設定（含系統紀錄、讓電視重新整理）、清空此日班表需輸入 ADMIN_KEY（中繼站 action=admin 驗證，10 分鐘內錯 10 次暫停），解鎖 10 分鐘、關閉設定即上鎖；同步密碼不再預先填入，可清除本機密碼；分隊名稱改在設定修改。③斷網提示視窗（不阻擋操作）：中斷時間、原因、影響、處理步驟，5 分鐘後再提醒，手動重新檢查有結果顯示；叮—咚提示音，預設開啟、夜間 22–6 靜音，可試聽 | 測試版實機驗收通過（含拔網路線）；正式版待實機驗收 |
 | v1.30 | 11/09 | 8d171fd（測試版）、04cbff8（正式） | 火警任務編組同一格多人（例：火警值班 30、31 兩位役男）拆成各自字卡與目前勤務（splitPeople：換行、頓號、多個空白、以番號開頭的單一空白）；不再誤列「輪休表上班但未編組」；車輛當班人員計算一併拆開。另：Code.gs 系統紀錄寫入後先 flush 再釋放鎖（ad19586），避免同時寫入時覆蓋 | 合成資料測試通過；使用者同意直接上正式版 |
+| v1.31 | 11/09 | f31cb8c（測試版）、f7e82c6（正式） | 手機／平板唯讀行動版（/m/）：MOBILE 模式沿用電視的唯讀機制（不需密碼、不寫入），但不縮放、不防螢幕保護；自己的版面 renderMob：頂部（分隊、時間、帶隊官、同步時間）、出勤中、車輛小卡（救護車附當班人員）、人力（上班、在隊、注意人力、值宿大夜、上班人員可展開）、勤務表單一時段可切換、火警任務編組可收合；不顯示交接事項；平板兩欄；每 30 秒更新；build.py 產生 m/ 與 staging/m/（各自 manifest、iOS 加到主畫面設定） | 測試版實機驗收通過（手機、平板）；正式版待實機驗收 |
 
 ## 已遇過的問題與處理方式
 
