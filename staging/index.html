@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="08f7a01b90bc">
+<meta name="build" content="bb79308af7bf">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -648,7 +648,7 @@ html.tv .vfoldbtn{cursor:default}html.tv .vfoldbtn i,html.tv .vmore{display:none
 .vmini .vmore{margin-left:auto;font-size:13px;color:var(--blue);cursor:pointer}
 html.tv .vmini{min-height:0}
 .car .crew.cout .cw.off .pc{filter:grayscale(1);opacity:.55}
-/* ===== v1.40 勤務車救助、為民服務：閃黃 ===== */
+/* ===== v1.40 勤務車救助、為民服務、破門：閃黃 ===== */
 @keyframes carY{50%{box-shadow:inset 0 0 0 999px #ffc10766}}
 .car.st-出勤中.c-aid{animation:carY 1.2s infinite;border-left-color:#ffc107}
 .car.st-出勤中.c-aid .s{color:#ffd166}
@@ -2189,7 +2189,7 @@ function setCar(s){
 // ===== 出動 =====
 const CASES=['火警','救護','破門','救助','為民服務','訓練','其他'];
 const isTrain=c=>/訓練/.test(c||'');
-const isAid=c=>/救助|為民服務/.test(c||'');   // 救助、為民服務（含「其他」自行輸入的文字）
+const isAid=c=>/救助|為民服務|破門/.test(c||'');   // 救助、為民服務、破門（含「其他」自行輸入的文字）
 let dp={type:'火警',sel:{}};
 function carBy(n){return S.vehicles.find(v=>v.name===n);}
 function availCar(v){return v.status==='在隊';}
