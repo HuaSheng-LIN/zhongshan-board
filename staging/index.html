@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="be91782a0a1a">
+<meta name="build" content="9eb6b0c6b296">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -648,6 +648,8 @@ html.tv .vfoldbtn{cursor:default}html.tv .vfoldbtn i,html.tv .vmore{display:none
 .vmini .vmore{margin-left:auto;font-size:13px;color:var(--blue);cursor:pointer}
 html.tv .vmini{min-height:0}
 .car .crew.cout .cw.off .pc{filter:grayscale(1);opacity:.55}
+/* ===== v1.39 勤務車火警出勤：與水箱車相同閃紅 ===== */
+.car.st-出勤中.c-fire{animation:carR 1.2s infinite}
 </style>
 </head>
 <body>
@@ -1014,7 +1016,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.38';   // 版本號：每次發布時更新
+const APP_VER='v1.39';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -2001,7 +2003,7 @@ function renderCars(){
   const fold=t=>t==='摩托車'&&S.motoFold!==false;
   document.getElementById('cars').innerHTML=types.map(t=>fold(t)?motoBar(t):`<div class="vgroup">${t==='摩托車'?`<div class="vlabel vfoldbtn" onclick="motoToggle()" title="收合摩托車">${esc(t)}<i>▲</i></div>`:`<div class="vlabel">${esc(t)}</div>`}<div class="cars" style="grid-template-columns:repeat(${Math.min(3,S.vehicles.filter(v=>v.type===t).length)},minmax(0,1fr))">`+
     S.vehicles.map((v,i)=>{const a=artOf(v);return v.type!==t?'':`
-      <div class="car st-${v.status} ${a?'art':''}${a&&a[0]==='p'?' photo':''} ${v.type==='水箱車'?'t-fire':v.type==='救護車'?'t-ems':v.type==='摩托車'?'t-moto':''} ${(v.status==='出勤中'||v.status==='返隊中')&&isTrain(v.case)?'c-train':''}" ${a?`style="--art:${VEH_URL[a].replace(/"/g,'&quot;')}"`:''} onclick="openCar(${i})">
+      <div class="car st-${v.status} ${a?'art':''}${a&&a[0]==='p'?' photo':''} ${v.type==='水箱車'?'t-fire':v.type==='救護車'?'t-ems':v.type==='摩托車'?'t-moto':''} ${(v.status==='出勤中'||v.status==='返隊中')&&isTrain(v.case)?'c-train':''} ${v.type==='勤務車'&&v.case==='火警'?'c-fire':''}" ${a?`style="--art:${VEH_URL[a].replace(/"/g,'&quot;')}"`:''} onclick="openCar(${i})">
         <div class="n">${esc(v.name)}${v.note?`<small>${esc(v.note)}</small>`:''}</div>
         <div class="s">${v.status}${(v.status==='出勤中'||v.status==='返隊中')&&v.case?`<small>${esc(v.case)}</small>`:''}</div>
         <div class="d">${v.status==='在隊'?'&nbsp;':'已 '+dur(now-v.since)}</div>${crewHtml(v)}</div>`;}).join('')+'</div></div>').join('');
