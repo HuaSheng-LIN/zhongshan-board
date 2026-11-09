@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="bf9e5f86f515">
+<meta name="build" content="fdf15f8f0422">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -987,7 +987,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.34';   // 版本號：每次發布時更新
+const APP_VER='v1.35';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -1664,11 +1664,14 @@ function ldName(p,list){
 function leadersOf(k){
   const r=S.rot[k];if(!r)return null;
   const L=r.on.filter(p=>p.no>=1&&p.no<=4).sort((a,b)=>a.no-b.no);
-  // 層級：分隊長(1番)最高，其餘依番號；受訓等(有標記)的帶隊官先不列入，請值班人員確認
-  const ok=L.filter(p=>!p.tag);
+  // 層級：分隊長(1番)最高，其餘依番號
+  // 有標記（訓、搜等）的帶隊官：當天勤務表上有排他 → 人在分隊，照常列入；勤務表上沒有他才先不列入，請值班人員確認
+  const sc=S.sched[k],inSched=nm=>!!sc&&(sc.slots||[]).some(sl=>Object.values(sl.cells||{}).some(l=>l.some(x=>stripNo(x)===nm)))
+    ||!!sc&&(sc.groups||[]).some(g=>g.rows.some(r=>(r.names||splitPeople(r.name)).some(x=>stripNo(x)===nm)));
+  const ok=L.filter(p=>!p.tag||inSched(p.name));
   const dayL=ok[0];                                       // 白天：在隊者（含外宿）中番號最小
   const nightL=ok.filter(p=>!p.out)[0];                   // 18:00 後：不外宿者中番號最小
-  const unsure=L.filter(p=>p.tag);
+  const unsure=L.filter(p=>p.tag&&!inSched(p.name));
   const ov=S.leaderOv[k]||{};
   const all=r.on;
   const pick=(nm,def)=>nm?all.find(p=>p.name===nm)||{name:nm,t:''}:def;
@@ -2310,7 +2313,9 @@ function dynPayload(){
   while(extra.length>3){const a=extra.pop(),b=extra[2];b.item+='、'+a.item;b.veh=[b.veh,a.veh].filter(Boolean).join('+');b.n=(+b.n||0)+(+a.n||0);}
   while(extra.length<3)extra.push({item:'',veh:'',n:''});
   const rest=slot?(slot.cells['休息']||[]).length:'';
-  return {leader:leader?leader.name:'',onDuty:r?r.n:'',standby,stopped,rows:rows.concat(extra),rest:rest||'',slot:slot?slot.label:''};
+  // 派遣科動態表慣例：帶隊官是分隊長時寫「分隊長」，其他寫姓名
+  const ldTxt=leader?((leader.t==='分隊長'||leader.no===1)?'分隊長':leader.name):'';
+  return {leader:ldTxt,onDuty:r?r.n:'',standby,stopped,rows:rows.concat(extra),rest:rest||'',slot:slot?slot.label:''};
 }
 function openDyn(){
   const p=dynPayload(),key=localStorage.getItem(KEY+'.key')||'';
@@ -2391,6 +2396,10 @@ function dynRead(){
 function dynGotBlock(block){
   S.dynReadAt=Date.now();
   const manual=!S.dynLast||!sameBlock(block,dynBlockOf(S.dynLast));
+  // 動態表已經和看板現在要寫的內容一樣（例如有人手動改成正確內容）→ 視為一致，更新比對基準，不跳提示
+  if(manual&&sameBlock(block,dynBlockOf(dynPayload()))){
+    S.dynLast=dynPayload();if(S.dynDiff)logEvent('動態表','動態表已與看板一致，恢復自動同步');
+    S.dynDiff=null;if(S.dynConflict==='動態表中山區塊有人工修改'||/尚未建立同步基準/.test(S.dynConflict||''))S.dynConflict='';save();dynShow();return;}
   if(!manual){if(S.dynDiff)logEvent('動態表','動態表已與看板一致，恢復自動同步');S.dynDiff=null;if(S.dynConflict==='動態表中山區塊有人工修改')S.dynConflict='';save();dynShow();return;}   // 動態表已和看板最後寫入的一致 → 恢復自動同步
   const d=dynDiffOf(block);d.block=block;d.at=Date.now();
   const sig=JSON.stringify([d.cars,d.fields]);
