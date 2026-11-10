@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="4a88d099d194">
+<meta name="build" content="68c10247e324">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -541,6 +541,7 @@ html.mob body>header,html.mob body>main,html.mob #updBar,html.mob #toast{display
 #mob{max-width:1100px;margin:0 auto;padding:10px 10px calc(16px + env(safe-area-inset-bottom));font-size:15px}
 #mob .mHead{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#7a1418,#2a1520);border-radius:12px;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top))}
 #mob .mUnit{font-size:22px;font-weight:800}
+#mob .mUnit span{display:inline-block;white-space:nowrap}   /* 以空白分段換行，「中山分隊」不會被拆開 */
 #mob .mDate{font-size:13px;color:#cfd8ea}
 #mob .mClock{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums}
 #mob .mLead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:8px 2px 2px}
@@ -1031,7 +1032,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.42';   // 版本號：每次發布時更新
+const APP_VER='v1.43';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -2708,7 +2709,7 @@ function renderMob(){
   const txt=id=>(document.getElementById(id)||{}).textContent||'';
   const hm=t=>{const x=new Date(t);return pad(x.getHours())+':'+pad(x.getMinutes());};
   // 頂部
-  let h=`<div class="mHead"><div><div class="mUnit">${esc(S.unit)}</div><div class="mDate">${esc(txt('date'))}</div></div><div class="mClock">${pad(d.getHours())}:${pad(d.getMinutes())}</div></div>
+  let h=`<div class="mHead"><div><div class="mUnit">${String(S.unit||'').split(/\s+/).filter(Boolean).map(w=>`<span>${esc(w)}</span>`).join(' ')}</div><div class="mDate">${esc(txt('date'))}</div></div><div class="mClock">${pad(d.getHours())}:${pad(d.getMinutes())}</div></div>
   <div class="mLead"><span>今日帶隊官</span><b>${esc(txt('ldMain'))}</b>${txt('ldSub')?`<small>${esc(txt('ldSub'))}</small>`:''}</div>`;
   h+=netDown?`<div class="mWarn">⚠ 網路已中斷，資料停在 ${hm(netOkAt)}</div>`:(liveAt?`<div class="mSync">● 已同步 ${hm(liveAt)}:${pad(new Date(liveAt).getSeconds())}</div>`:'');
   // 出勤中
