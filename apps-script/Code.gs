@@ -8,6 +8,8 @@
  *  3. 讀取動態表中山區塊（action=dynread，需要密碼），讓看板發現人工修改並提示值班員。
  *  4. 勤務歷程：寫入（action=logadd）與讀取某一天（action=logread），都需要密碼。
  *  5. 管理密碼檢查（action=admin）：看板開啟「設定」前先到這裡核對 ADMIN_KEY。
+ *  6. 讀取人員資格表（action=qual，需要密碼）：只回傳姓名、職稱、番號、到職年月、年資順位、是否不排車上職務，
+ *     給「即時任務編組」判斷年資（滿 3 年＝資深）。人員資格表放在維護者私人雲端硬碟。
  *     歷程存在 LOG_SHEET_ID 這份私人試算表，每月一個分頁，超過 LOG_KEEP_MONTHS 個月的分頁自動刪除。
  *
  * 測試環境：另外建一個 Apps Script 專案貼上同一份程式，只改 WRITE_KEY（用不同的測試密碼）
@@ -44,6 +46,10 @@ const LOG_SHEET_ID = '1s6-KGnhDxzrbdp5BRCJLfXFpVlv2YNvjaeC5B1Otcyg';
 const LOG_KEEP_MONTHS = 12;
 const LOG_HEAD = ['勤務日', '時間', '類別', '內容', '時段值班', '裝置', '版本', '事件ID'];
 
+// 人員資格表（私人試算表，分頁「人員資格」）：只讀取，不寫入。測試與正式中繼站可指向同一份
+const QUAL_SHEET_ID = '1yWhSfQdMBjdw3d4QmuDLbKPWBWHLlDKjcoH-VKCKVGI';
+const QUAL_TAB = '人員資格';
+
 // 讀取：電視與值班台都會呼叫（支援 callback，方便網頁直接載入）
 function doGet(e) {
   const p = (e && e.parameter) || {};
@@ -53,6 +59,7 @@ function doGet(e) {
   else if (p.action === 'logadd') out = JSON.stringify(logAdd_(p));
   else if (p.action === 'logread') out = JSON.stringify(logRead_(p));
   else if (p.action === 'admin') out = JSON.stringify(adminCheck_(p));
+  else if (p.action === 'qual') out = JSON.stringify(qualRead_(p));
   else out = JSON.stringify(read_());
   const cb = p.callback;
   if (cb && /^[\w$.]+$/.test(cb)) {
@@ -197,6 +204,37 @@ function adminCheck_(p) {
   if (String(p.pw || '') === ADMIN_KEY) { cache.remove('admFail'); return { ok: true }; }
   cache.put('admFail', String(fails + 1), 600);
   return { ok: false, error: '管理密碼錯誤' };
+}
+
+// ===== 人員資格表（即時任務編組用）=====
+// 只回傳編組需要的欄位；表上其他欄位（備註等）不回傳
+function qualRead_(p) {
+  try {
+    if (p.key !== WRITE_KEY) return { ok: false, error: '密碼錯誤' };
+    const sh = SpreadsheetApp.openById(QUAL_SHEET_ID).getSheetByName(QUAL_TAB);
+    if (!sh || sh.getLastRow() < 2) return { ok: false, error: '找不到「' + QUAL_TAB + '」分頁' };
+    const v = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getDisplayValues();
+    const h = v[0].map(function (x) { return String(x); });
+    const col = function (re) { for (let i = 0; i < h.length; i++) if (re.test(h[i])) return i; return -1; };
+    const cNo = col(/番號/), cT = col(/職稱/), cN = col(/姓名/), cR = col(/年資順位/), cJ = col(/到職/), cX = col(/不排車上/);
+    if (cN < 0) return { ok: false, error: '人員資格表缺少「姓名」欄' };
+    const list = [];
+    v.slice(1).forEach(function (r) {
+      const n = String(r[cN] || '').trim(); if (!n) return;
+      const m = cJ >= 0 ? String(r[cJ]).match(/(\d{4})\s*[\/\-.年]\s*(\d{1,2})/) : null;
+      list.push({
+        n: n.slice(0, 20),
+        no: cNo >= 0 ? (Number(r[cNo]) || null) : null,
+        t: cT >= 0 ? String(r[cT]).slice(0, 10) : '',
+        j: m ? m[1] + '-' + ('0' + m[2]).slice(-2) : '',
+        r: cR >= 0 ? (Number(r[cR]) || null) : null,
+        x: cX >= 0 ? String(r[cX]).toUpperCase() === 'TRUE' : false
+      });
+    });
+    return { ok: true, list: list.slice(0, 200) };
+  } catch (err) {
+    return { ok: false, error: String(err && err.message || err) };
+  }
 }
 
 // ===== 勤務歷程 =====
