@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="1fb37cf975dd">
+<meta name="build" content="68a88e411e8d">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -735,7 +735,7 @@ html.tv #cars .car .crew .vcrew.in .pc{font-size:16px!important}
   </div>
   <div class="rgt">
     <section id="pDuty" class="panel">
-      <h2><span class="tabs"><button id="tabDuty" onclick="setTab('duty')">📋 今日勤務表</button><button id="tabTask" onclick="setTab('task')">🔥 火警任務編組</button><button id="tabNotes" onclick="setTab('notes')">📝 交接事項</button><button id="tabLogs" onclick="setTab('logs')" style="display:none">出勤紀錄</button></span>
+      <h2><span class="tabs"><button id="tabDuty" onclick="setTab('duty')">📋 今日勤務表</button><button id="tabTask" onclick="setTab('task')">🔥 即時任務編組</button><button id="tabNotes" onclick="setTab('notes')">📝 交接事項</button><button id="tabLogs" onclick="setTab('logs')" style="display:none">出勤紀錄</button></span>
         <span id="viewDay" class="hint"></span>
         <span class="acts" id="actsDuty">
           <button class="act" onclick="shiftView(-1)">◀ 前一天</button>
@@ -954,12 +954,12 @@ html.tv #cars .car .crew .vcrew.in .pc{font-size:16px!important}
   <label>隊員名冊（一行一位；讀取輪休表時會自動更新為當月人員）</label><textarea id="sRoster" style="min-height:120px"></textarea>
   <label>計算「目前在隊」時要扣掉的勤務（用逗號分隔）</label><input id="sAway">
   <label>「目前在隊」少於或等於幾人時顯示「注意人力」警示</label><input id="sLow" type="number" min="0" max="50">
-  <label>即時任務編組（人員資格表由中繼站讀取，每 6 小時自動更新）</label>
+  <label>即時任務編組 自動補位（人員資格表由中繼站讀取，每 6 小時自動更新）</label>
   <div class="menu" style="align-items:center;gap:10px"><label style="margin:0;display:flex;align-items:center;gap:6px"><input type="checkbox" id="sAuto"> 自動補位（休息、外出、訓練、請假或出勤時自動找人替補）</label>
     <span id="sQualInfo" class="hint"></span><button type="button" onclick="qualFetch(true)">🔄 重新讀取人員資格表</button></div>
-  <label>火警任務編組格式（一行一組，格式：組名：職務、職務…；括號內是小字說明）</label><textarea id="sTpl" style="min-height:120px"></textarea>
-  <label>火警任務編組 注意事項</label><textarea id="sTnote" style="min-height:80px"></textarea>
-  <label>火警任務編組 備註</label><textarea id="sTmemo" style="min-height:80px"></textarea>
+  <label>即時任務編組格式（一行一組，格式：組名：職務、職務…；括號內是小字說明）</label><textarea id="sTpl" style="min-height:120px"></textarea>
+  <label>即時任務編組 注意事項</label><textarea id="sTnote" style="min-height:80px"></textarea>
+  <label>即時任務編組 備註</label><textarea id="sTmemo" style="min-height:80px"></textarea>
   <label>勤務項目（今日勤務表欄位，用逗號分隔；有 Google 勤務表時以試算表為準）</label><input id="sDuties">
   <div class="row2">
     <div style="grid-column:1/-1"><label>勤務時段切點（每個時段的開始時間，第一個是勤務日開始時間，用逗號分隔）</label>
@@ -1061,7 +1061,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.45';   // 版本號：每次發布時更新
+const APP_VER='v1.46';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -1618,11 +1618,17 @@ function autoTask(k,sc){
   const away=(n,g)=>{const nm=stripNo(n);if(!nm)return true;
     if(r){const p=rp(nm);if(!p)return true;if(!inSlot(nm)&&((p.out&&ngt)||p.tag))return true;}
     if(awayDuty(dutyOfName(slot,nm)))return true;
+    if(on91.has(nm)&&!(g&&gNo(g.g)==='91'))return true;   // 目前時段在 91 車當班
     return busyNot(nm,g);};
   const noCrew=nm=>{const q=qualOf(nm),p=rp(nm);return !!(q&&q.x)||/役男|替代役/.test((p&&p.t)||(q&&q.t)||'');};
   // 工作用編組：names＝目前人員，orig＝試算表原本的人員（手動調整後以調整為準）
   const ov=(S.taskOv||{})[k]||[];
   const G=sc.groups.filter(g=>g.rows.some(x=>x.name)).map(g=>({g:g.g,rows:g.rows.map(x=>{const nm=(x.names||splitPeople(x.name)).map(stripNo);return {role:x.role,names:[...nm],orig:[...nm],sheet:[...nm]};})}));
+  // 91 車：依「今日勤務表」目前時段的當班人員（例：緊急救護），不看試算表左側編組；這些人不再排其他車
+  const v91=S.vehicles.find(v=>v.name==='91'),e91=(slot&&v91&&v91.crew?(slot.cells[v91.crew]||[]):[]).map(stripNo).filter(Boolean);
+  if(e91.length){let g91=G.find(g=>gNo(g.g)==='91');if(!g91){g91={g:'91車',rows:[]};G.push(g91);}
+    g91.rows=e91.map((n,i)=>({role:i?'救護員':'駕駛',names:[n],orig:[n],sheet:[n]}));g91.slot=true;}
+  const on91=new Set(e91);
   ov.forEach(o=>{const g=G.find(x=>x.g===o.g);if(!g)return;for(const x of g.rows){const i=x.sheet.indexOf(o.from);if(i>=0){x.names[i]=o.to||'';x.orig[i]=o.to||'';break;}}});
   const fills={},changes=[];
   const mark=(g,n)=>{(fills[g.g]=fills[g.g]||new Set()).add(n);};
@@ -1630,7 +1636,7 @@ function autoTask(k,sc){
   const carOut=g=>outCars.some(v=>g.g===v.name+'車'||g.g===v.name);
   const frozen=g=>prio(g)<0||carOut(g);
   ov.forEach(o=>{const g=G.find(x=>x.g===o.g);if(g&&o.to&&o.to!==o.from)mark(g,o.to);});
-  if(S.taskAuto===false)return {G,fills,changes,off:true,away:n=>away(n,null)};
+  if(S.taskAuto===false)return {G,fills,changes,off:true,away:(n,g)=>away(n,g||null)};
   const where=n=>{const res=[];G.forEach(g=>g.rows.forEach((x,ri)=>x.names.forEach((y,pi)=>{if(y===n)res.push({g,ri,pi});})));return res;};
   const assigned=n=>where(n).length>0;
   const eligible=n=>!!n&&!noCrew(n)&&!away(n,null);
@@ -1705,7 +1711,7 @@ function autoTask(k,sc){
       }
     }
   }
-  return {G,fills,changes,away:n=>away(n,null)};
+  return {G,fills,changes,away:(n,g)=>away(n,g||null)};
 }
 // 依自動補位結果檢查是否需要重畫（車輛出勤、時段變更、狀態改變時）
 let lastAutoSig='',lastAutoLog='';
@@ -1823,7 +1829,7 @@ function renderTaskSheet(k,sc){
     (empty.length?`<div class="tempty">未編組車輛：${empty.map(g=>esc(g.g)).join('、')}</div>`:'')+
     (r?`<div class="tfree">${free.length?`${au?'目前在隊':'輪休表上班'}但未編組：<b>${free.join('、')}</b>`:au?'✔ 目前在隊人員都已編組':'✔ 當日上班人員都已編組'}</div>`:'')+
     (sc.note?`<div class="tnote left">${esc(sc.note)}</div>`:'');
-  document.getElementById('hintTask').innerHTML=`<span class="src">● 資料來自 Google 試算表「${esc(sc.sheet)}」，要修改請直接改試算表</span>${slot?'　右側小字＝目前時段的勤務':''}${au&&!au.off?'　<span class="bu" style="font-size:12px">補</span>＝即時任務編組自動補位'+(TV?'':'（點人名可手動調整）'):''}${au&&!(S.qual&&S.qual.list)&&!TV?'　⚠ 尚未讀取人員資格表（年資規則暫不套用）':''}`;
+  document.getElementById('hintTask').innerHTML=`<span class="src">● 資料來自 Google 試算表「${esc(sc.sheet)}」，要修改請直接改試算表</span>${slot?'　右側小字＝目前時段的勤務':''}${au&&au.G.some(g=>g.slot)?'　91 車＝今日勤務表目前時段人員':''}${au&&!au.off?'　<span class="bu" style="font-size:12px">補</span>＝即時任務編組自動補位'+(TV?'':'（點人名可手動調整）'):''}${au&&!(S.qual&&S.qual.list)&&!TV?'　⚠ 尚未讀取人員資格表（年資規則暫不套用）':''}`;
 }
 function renderTask(){
   const k=keyOf(viewDate()),t=S.task[k]||{a:{},out:[]};
@@ -1887,7 +1893,7 @@ function tkSave(){
   else{const key=S.taskTpl[tk.gi].g+'#'+tk.i,v=extra[0]||tkSel[0]||'';if(v)t.a[key]=v;else delete t.a[key];}
   t.at=Date.now();save();dTask.close();renderTask();
 }
-function clearTask(){const k=keyOf(viewDate());if(confirm(`確定清空 ${rocDate(viewDate())} 的火警任務編組？`)){delete S.task[k];save();renderTask();}}
+function clearTask(){const k=keyOf(viewDate());if(confirm(`確定清空 ${rocDate(viewDate())} 的即時任務編組？`)){delete S.task[k];save();renderTask();}}
 
 // ===== 選擇人員 =====
 let pk={},pkSel=[];
@@ -2466,9 +2472,21 @@ function firePresets(){
   let rec=!ok('91')?'只派 11':(ib>=need(['11','15','91'])?'11＋15＋91':'11＋91');
   return {list,rec,ib};
 }
+// 出動時自動帶入「即時任務編組」該車的人員（只帶今日上班且目前在隊者；同一人只帶到第一台車）
+function taskCrew(name,taken){
+  const k=dutyKey(new Date()),sc=S.sched[k];if(!sc||!sc.groups.length)return [];
+  let a;try{a=autoTask(k,sc);}catch(e){return [];}
+  const g=a.G.find(x=>gNo(x.g)===String(name));if(!g)return [];
+  const on=onDutySet(),used=new Set(taken||[]);
+  return [...new Set(g.rows.flatMap(x=>x.names).filter(Boolean))].filter(n=>on.has(n)&&!used.has(n)&&!a.away(n,g));
+}
+function dpFill(n){
+  const taken=Object.keys(dp.crew).filter(c=>c!==n).flatMap(c=>dp.crew[c]||[]);
+  const c=taskCrew(n,taken);if(c.length){dp.crew[n]=c;dp.sel[n]=c.length;}
+}
 function openDispatch(pre){
   dp={type:'火警',sel:{},other:'',crew:{}};
-  (pre||[]).forEach(n=>{const v=carBy(n);if(v)dp.sel[n]=v.seats||2;});
+  (pre||[]).forEach(n=>{const v=carBy(n);if(v){dp.sel[n]=v.seats||2;dpFill(n);}});
   if(pre&&pre.length===1){const v=carBy(pre[0]);if(v&&v.type==='救護車')dp.type='救護';}
   if(!pre||!pre.length)applyPreset(null);
   drawDispatch();dDisp.showModal();
@@ -2480,7 +2498,7 @@ function applyPreset(cars){
     else if(dp.type==='救護'){cars=['91','92'].filter(n=>{const v=carBy(n);return v&&availCar(v);}).slice(0,1);}
     else cars=[];
   }
-  dp.sel={};cars.forEach(n=>{const v=carBy(n);if(v)dp.sel[n]=v.seats||2;});
+  dp.sel={};dp.crew={};cars.forEach(n=>{const v=carBy(n);if(v){dp.sel[n]=v.seats||2;dpFill(n);}});
 }
 // 自選：清除所有勾選，從零開始選車
 function dpCustom(){dp.sel={};dp.crew={};drawDispatch();}
@@ -2500,7 +2518,7 @@ function drawDispatch(){
       ${on?`<div class="who"><button type="button" class="whob" onclick="event.preventDefault();event.stopPropagation();openCrew('${v.name}')">👤 選人</button>${(dp.crew[v.name]||[]).map(n=>chip(dutyKey(new Date()),n)).join('')}</div>`:''}</label>`;}).join('');
   dpSum();
 }
-function dpToggle(n,on){const v=carBy(n);if(on)dp.sel[n]=v.seats||2;else{delete dp.sel[n];delete dp.crew[n];}drawDispatch();}
+function dpToggle(n,on){const v=carBy(n);if(on){dp.sel[n]=v.seats||2;dpFill(n);}else{delete dp.sel[n];delete dp.crew[n];}drawDispatch();}
 // 出勤人員：全隊名冊（依番號），當日上班者排前面並標示
 let crCar='',crSel=[];
 function crewRoster(){
@@ -2585,8 +2603,8 @@ function quickEms(){
   const v=['91','92'].map(carBy).find(x=>x&&x.status==='在隊')||S.vehicles.find(x=>x.type==='救護車'&&x.status==='在隊');
   if(!v){alert('目前沒有在隊的救護車');return;}
   undoSnap=snapCars();
-  const now=Date.now();v.status='出勤中';v.since=now;v.case='救護';v.crewN=v.seats||2;v.grp=now;
-  afterCarChange();logEvent('出勤',`救護：${v.name}（${v.crewN} 人，一鍵救護出勤）`);toast(`🚑 ${v.name} 救護出勤（${v.crewN} 人）`);
+  const crew=taskCrew(v.name),now=Date.now();v.status='出勤中';v.since=now;v.case='救護';v.crewN=crew.length||v.seats||2;v.grp=now;if(crew.length)v.crewNames=crew;
+  afterCarChange();logEvent('出勤',`救護：${v.name}（${crew.length?crew.map(x=>fmtNo(dutyKey(new Date()),x)).join('、'):v.crewN+' 人'}，一鍵救護出勤）`);toast(`🚑 ${v.name} 救護出勤（${v.crewN} 人）`);
 }
 
 // ===== 動態表自動同步 =====
@@ -2983,7 +3001,7 @@ function renderMob(){
   }
   // 火警任務編組
   const tk=document.getElementById('task');
-  if(tk&&tk.innerHTML.trim())R+=`<section class="mSec"><details data-k="task"${mobOpen.task!==false?' open':''}><summary>🔥 火警任務編組</summary><div class="mTask">${tk.innerHTML}</div></details></section>`;
+  if(tk&&tk.innerHTML.trim())R+=`<section class="mSec"><details data-k="task"${mobOpen.task!==false?' open':''}><summary>🔥 即時任務編組</summary><div class="mTask">${tk.innerHTML}</div></details></section>`;
   h+=`<div class="mBody"><div>${L}</div><div>${R}</div></div>`;
   h+=`<div class="mFoot">${esc(txt('appSub'))}</div>`;
   el.innerHTML=h;
@@ -3032,7 +3050,7 @@ if(TV){
     S.tab='duty';showTab();
     $('pDuty').querySelector('.tabs').outerHTML='<span class="bar"></span>今日勤務表';
     const pTab=document.createElement('section');pTab.id='pTab';pTab.className='panel';
-    pTab.innerHTML='<h2><span class="bar"></span>🔥 火警任務編組</h2>';
+    pTab.innerHTML='<h2><span class="bar"></span>🔥 即時任務編組</h2>';
     const wt=$('wrapTask');pTab.appendChild(wt);wt.style.display='';
     document.querySelector('.rgt').appendChild(pTab);
     ['wrapLogs','wrapNotes','actsLogs','hintTask','hintDuty'].forEach(id=>{const e=$(id);if(e)e.style.display='none';});
