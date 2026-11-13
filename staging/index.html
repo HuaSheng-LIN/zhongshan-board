@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="d9234373e59a">
+<meta name="build" content="df15e9c7da0f">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -665,6 +665,15 @@ html.tv .vmini{min-height:0}
 .car.st-出勤中.c-aid .s{color:#ffd166}
 /* ===== v1.39 勤務車火警出勤：與水箱車相同閃紅 ===== */
 .car.st-出勤中.c-fire{animation:carR 1.2s infinite}
+/* ===== v1.48 卡片空間不足時的精簡標題：車號縮小、狀態與時間排成一行，把空間讓給人員名單 ===== */
+#cars .car.vcomp{padding-top:3px!important}
+#cars .car.vcomp .n{font-size:36px!important;line-height:1!important}
+#cars .car.vcomp .n small{font-size:12px!important;vertical-align:.5em!important}
+#cars .car.vcomp .s{display:inline!important;font-size:16px!important}
+#cars .car.vcomp .d{display:inline!important;margin-left:6px;font-size:11px!important}
+#cars .car.vcomp .crew{margin-top:2px!important;padding:2px 5px!important}
+#cars .car.vcomp .crew .vcrew.in .pc,html.tv #cars .car.vcomp .crew .vcrew.in .pc{font-size:12px!important}
+#cars .car.vcomp .crew .ckrow{margin-bottom:1px}
 /* ===== v1.45 91 車有志工時：卡片放不下就收緊並縮小字卡，志工不再被擋住 ===== */
 #cars .car.vtight .crew{margin-top:2px;padding:2px 5px}
 #cars .car.vtight .crew~.crew{margin-top:2px}
@@ -1061,7 +1070,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.47';   // 版本號：每次發布時更新
+const APP_VER='v1.48';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -2320,16 +2329,25 @@ function fitCrew(){
       return pc.scrollWidth>pc.offsetWidth+1||[...pc.children].some(c=>c.scrollWidth>c.offsetWidth+1)||pr.right>x.getBoundingClientRect().right+1||pr.right>cr0()+1;});
     const set=(one,f,hid)=>{cr.classList.toggle('one',one);cr.style.setProperty('--cf',f+'px');items.forEach((x,i)=>x.hidden=i>=n-hid);
       let m=cr.querySelector('.more');if(hid){if(!m){m=document.createElement('span');m.className='more';cr.appendChild(m);}m.textContent=`＋${hid} 人`;}else if(m)m.remove();};
-    const sig=card.getBoundingClientRect().width.toFixed(0)+'x'+lim().toFixed(0)+'|'+items.map(x=>x.textContent).join(',')+'|'+(lastBox?lastBox.textContent:'');
+    // 排版條件：卡片寬高、人員、志工，加上狀態與案件文字（出勤中→返隊中、案件名稱長短都會改變可用高度）
+    const sig=card.getBoundingClientRect().width.toFixed(0)+'x'+lim().toFixed(0)+'|'+items.map(x=>x.textContent).join(',')+'|'+(lastBox?lastBox.textContent:'')+'|'+((card.querySelector('.s')||{}).textContent||'');
     const key=card.querySelector('.n').textContent;
-    const hit=crewFitCache[key];if(hit&&hit.sig===sig){set(hit.one,hit.f,hit.hid);return;}
-    const fMax=TV?21:19,fMin=11,oneFirst=card.classList.contains('t-ems')||n<=2;
+    const apply=r=>{card.classList.toggle('vcomp',!!r.comp);set(r.one,r.f,r.hid);};
+    // 沿用上次結果前一定重新量一次，放不下就重算（避免沿用舊排版而被切掉）
+    const hit=crewFitCache[key];if(hit&&hit.sig===sig){apply(hit);if(!cut()&&!over())return;}
+    const fMax=TV?21:19,fMin=11;
     // 救護車固定一行一人；其他車兩種排法都試，選字級較大的（同字級時兩人以下用一行一人）
     const plans=card.classList.contains('t-ems')?[true]:[true,false];
-    for(let hid=0;hid<n;hid++){let best=null;
-      for(const one of plans)for(let f=fMax;f>=fMin;f--){set(one,f,hid);if(!cut()&&!over()){if(!best||f>best.f||(f===best.f&&one===(n<=2)))best={one,f};break;}}
-      if(best){set(best.one,best.f,hid);crewFitCache[key]={sig,one:best.one,f:best.f,hid};return;}}
-    set(true,fMin,n-1);crewFitCache[key]={sig,one:true,f:fMin,hid:n-1};
+    const solve=(pl)=>{for(let hid=0;hid<n;hid++){let best=null;
+        for(const one of (pl||plans))for(let f=fMax;f>=fMin;f--){set(one,f,hid);if(!cut()&&!over()){if(!best||f>best.f||(f===best.f&&one===(n<=2)))best={one,f};break;}}
+        if(best)return {one:best.one,f:best.f,hid,ok:true};}
+      return {one:true,f:fMin,hid:Math.max(0,n-1),ok:false};};
+    card.classList.remove('vcomp');
+    let r=solve();
+    // 放不下、要隱藏人員或字太小 → 改用精簡標題再排一次，取較好的結果
+    if(!r.ok||r.hid>0||r.f<16){card.classList.add('vcomp');const r2=solve([true,false]);   // 精簡標題時救護車也可一行兩人
+      if(r2.ok&&(!r.ok||r2.hid<r.hid||(r2.hid===r.hid&&r2.f>r.f)))r={...r2,comp:true};}
+    apply(r);crewFitCache[key]={sig,one:r.one,f:r.f,hid:r.hid,comp:!!r.comp};
   });
 }
 // 志工列移到當班（或出勤）人員框的標題列右側
@@ -2338,24 +2356,25 @@ function volInline(card,box){
   const ck=box.querySelector('.ck');if(!ck)return false;
   const row=document.createElement('div');row.className='ckrow';box.insertBefore(row,ck);row.appendChild(ck);row.appendChild(vc);vc.classList.add('in');return true;
 }
-// 在隊時有志工列：卡片高度固定，放不下就依序「收緊間距 → 略縮字卡 → 志工移到標題列右側 → 再縮字卡」直到完整顯示
+// 在隊時的當班人員（與志工列）：卡片高度固定，放不下就依序
+// 「收緊間距 → 略縮字卡 → 志工移到標題列右側 → 精簡標題 → 再縮字卡 → 排成一行」直到完整顯示
 function fitVol(){
   document.querySelectorAll('#cars .car').forEach(card=>{
-    card.classList.remove('vtight','vfit','vrow');card.style.removeProperty('--sf');
-    const vc=card.querySelector('.crew.vcrew'),box=card.querySelector('.crew:not(.vcrew)');if(!vc||!box||card.querySelector('.crew.cout'))return;
+    if(card.querySelector('.crew.cout'))return;
+    const vc=card.querySelector('.crew.vcrew'),box=card.querySelector('.crew:not(.vcrew)');if(!box&&!vc)return;
+    card.classList.remove('vtight','vfit','vrow','vcomp');card.style.removeProperty('--sf');
     const clips=[card];for(let e=card.parentElement;e&&e!==document.body;e=e.parentElement){if(/hidden|auto|scroll|clip/.test(getComputedStyle(e).overflowY))clips.push(e);if(e.classList.contains('panel'))break;}
     const lim=()=>Math.min(...clips.map(e=>e.getBoundingClientRect().bottom));
-    const over=()=>(vc.classList.contains('in')?box:vc).getBoundingClientRect().bottom>lim()-2;
+    const over=()=>((vc&&!vc.classList.contains('in'))?vc:(box||vc)).getBoundingClientRect().bottom>lim()-2;
     if(!over())return;
     card.classList.add('vtight');if(!over())return;
-    const pc=box.querySelector('.pc'),f0=pc?Math.round(parseFloat(getComputedStyle(pc).fontSize)):19;
+    const pc=(box||vc).querySelector('.pc'),f0=pc?Math.round(parseFloat(getComputedStyle(pc).fontSize)):19;
+    const shrink=(to)=>{for(let f=f0;f>=to;f--){card.style.setProperty('--sf',f+'px');if(!over())return true;}return false;};
     card.classList.add('vfit');
-    for(let f=f0-1;f>=17;f--){card.style.setProperty('--sf',f+'px');if(!over())return;}
-    card.style.setProperty('--sf',f0+'px');
-    if(!volInline(card,box))return;
-    for(let f=f0;f>=14;f--){card.style.setProperty('--sf',f+'px');if(!over())return;}
-    card.classList.add('vrow');
-    for(let f=f0;f>=11;f--){card.style.setProperty('--sf',f+'px');if(!over())return;}
+    if(shrink(17))return;
+    if(vc&&box&&volInline(card,box)&&shrink(17))return;
+    card.classList.add('vcomp');if(shrink(14))return;
+    card.classList.add('vrow');shrink(11);
   });
 }
 // 車輛側面插圖（風格化 SVG，車頭朝右；無品牌標誌）
