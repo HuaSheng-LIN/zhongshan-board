@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="d7dbfd733ded">
+<meta name="build" content="f2d22c285de2">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../../icon-192.png">
@@ -184,6 +184,27 @@ dialog textarea{min-height:140px}
 .tabs button{font-size:17px;font-weight:700;padding:4px 12px;white-space:nowrap;border-radius:8px 8px 0 0;border:1px solid var(--line);border-bottom:none;
   background:var(--panel2);color:var(--muted);font-family:inherit}
 .tabs button.on{background:var(--red);border-color:var(--red);color:#fff}
+/* 即時任務編組：休息班（灰色，字卡略淡表示目前不在線上） */
+#task .tg.trest .pc,#mob .tg.trest .pc{filter:saturate(.35);opacity:.88}
+#task .tg.trest .tr{display:block!important;height:100%}
+#task .tg.trest .p,#mob .tg.trest .p{display:flex!important;flex-direction:row!important;flex-wrap:wrap;align-items:center;align-content:center;gap:3px 6px;height:100%;padding:3px 8px}
+#task .tg.trest .pp,#mob .tg.trest .pp{display:inline-flex!important;width:auto!important;margin:0!important}
+#task .tg.trest .pc,#mob .tg.trest .pc{font-size:.82em!important}
+#task .tg.trest>div:last-child{min-width:0}
+/* 只有一列的車組（85、休息…）：組名排成一行，內容不超出該列高度 */
+#task .tcol .tg{grid-template-rows:minmax(0,1fr)}
+#task .tcol .tg .gn{min-height:0;overflow:hidden}
+#task .tcol .tg.tg1 .gn br{display:none}
+#task .tcol .tg.tg1 .gn{font-size:17px!important;white-space:nowrap;line-height:1.1}
+html.tv #pTab .tcol .tg.tg1 .gn{font-size:15px!important}
+/* 電視：同一格多人時，字卡依人數平分列高，不超出 */
+html.tv #pTab .tcol .tr .p.multi .pc{font-size:min(var(--fs,26px),calc(60cqh / var(--pn,2)))}
+html.tv #pTab .tcol .tr .p.multi{row-gap:1px;align-content:center}
+/* 電視：休息欄字卡依列高縮放（一列約 4 人，人多時分 2～3 列） */
+html.tv #pTab .tcol .tg.trest .tr .p .pc{font-size:min(17px,58cqh)!important}
+html.tv #pTab .tcol .tg.trest.rows2 .tr .p .pc{font-size:min(17px,29cqh)!important}
+html.tv #pTab .tcol .tg.trest.rows3 .tr .p .pc{font-size:min(16px,19cqh)!important}
+html.tv #pTab .tcol .tg.trest .p{padding:0 6px;gap:2px 5px}
 /* 即時任務編組：補位標示 */
 #task .bu,#mob .bu{display:inline-block;margin-left:4px;padding:0 .35em;border-radius:.3em;background:#f6b26b;color:#1b1b1b;font-weight:900;font-size:.78em;line-height:1.35;vertical-align:middle;letter-spacing:0}
 #task .pp.ovc{cursor:pointer}
@@ -1094,7 +1115,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.49';   // 版本號：每次發布時更新
+const APP_VER='v1.50';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -1604,13 +1625,13 @@ function showTab(){
 
 // ===== 火警任務編組 =====
 // 車組顏色：水箱車與勤務車紅色、救護車藍色、火警值班綠色
-const GCOL=[[/^1\d/,'#e06666'],[/^8\d/,'#e06666'],[/^9\d/,'#6fa8dc'],[/^值/,'#93c47d']];
+const GCOL=[[/^1\d/,'#e06666'],[/^8\d/,'#e06666'],[/^9\d/,'#6fa8dc'],[/^值/,'#93c47d'],[/^休/,'#9aa5b1']];
 // 版面：左欄 11、15；右欄 91、92、85、86（其他車組接在後面），火警值班放在右欄最下方
 const TORDER=['91','92','85','86'];
 function taskLayout(list){
   const L=[],R=[],B=[],no=g=>(String(g).match(/^\d+/)||[''])[0];
-  list.forEach(x=>{const n=no(x.g);if(/^值/.test(x.g))B.push(x);else if(n==='11'||n==='15')L.push(x);else R.push(x);});
-  L.sort((a,b)=>no(a.g)-no(b.g));
+  list.forEach(x=>{const n=no(x.g);if(/^[值休]/.test(x.g))B.push(x);else if(n==='11'||n==='15')L.push(x);else R.push(x);});
+  L.sort((a,b)=>no(a.g)-no(b.g));B.sort((a,b)=>(/^休/.test(a.g)?0:1)-(/^休/.test(b.g)?0:1));   // 休息排在火警值班上面
   const ri=x=>{const i=TORDER.indexOf(no(x.g));return i<0?99:i;};R.sort((a,b)=>ri(a)-ri(b));
   return `<div class="tgrid"><div class="tcol">${L.map(x=>x.h).join('')}</div><div class="tcol">${R.concat(B).map(x=>x.h).join('')}</div></div>`;
 }
@@ -1890,11 +1911,14 @@ function renderTaskSheet(k,sc){
       const one=n=>{const cd=dutyOfName(slot,n),cls=cd==='休息'?'rest':/外出|訓練|宣導/.test(cd)?'out':'';
         return chip(k,n)+(fl.has(stripNo(n))?'<span class="bu" title="自動補位">補</span>':'')+(cd?`<span class="cd ${cls}" title="目前時段勤務">${esc(cd)}</span>`:'');};
       const ovc=n=>{if(!au||TV)return '';const o=(origOf[g.g]||{})[stripNo(n)];return o?` ovc" onclick="openOv('${esc(g.g).replace(/'/g,'')}','${esc(o).replace(/'/g,'')}')" title="點選可手動調整`:'';};
-      return `<div class="tr"${ppl.length>1?` style="flex-grow:${1+0.9*(ppl.length-1)}"`:''}><div class="r">${roleHtml(r.role)}</div><div class="p ${ppl.length?'':'empty'}${ppl.length>1?' multi':''}">${ppl.length?ppl.map(n=>`<span class="pp${ovc(n)}">${one(n)}</span>`).join(''):'—'}</div></div>`;}).join('');
+      return `<div class="tr"${ppl.length>1?` style="flex-grow:${1+0.9*(ppl.length-1)}"`:''}><div class="r">${roleHtml(r.role)}</div><div class="p ${ppl.length?'':'empty'}${ppl.length>1?' multi':''}"${ppl.length>1?` style="--pn:${ppl.length}"`:''}>${ppl.length?ppl.map(n=>`<span class="pp${ovc(n)}">${one(n)}</span>`).join(''):'—'}</div></div>`;}).join('');
     // 高度依人數分配：同一格有多人時給較多高度，避免被切掉
     const wt=g.rows.reduce((t,r)=>{const n=(r.names||splitPeople(r.name)).length;return t+(n>1?1+0.9*(n-1):1);},0);
-    return {h:`<div class="tg" style="--gc:${gColor(g.g)};flex-grow:${wt}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:wt+1,g:g.g};
+    return {h:`<div class="tg${wt<=1?' tg1':''}" style="--gc:${gColor(g.g)};flex-grow:${wt}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:wt+1,g:g.g};
   });
+  // 休息：今日勤務表目前時段的休息班人員（只在今天顯示），放在火警值班上面
+  if(slot){const rest=(slot.cells['休息']||[]).filter(Boolean),rws=Math.min(3,Math.max(1,Math.ceil(rest.length/4))),wt=rws*1.05;
+    groups.push({h:`<div class="tg trest rows${rws}${rws===1?' tg1':''}" style="--gc:${gColor('休息')};flex-grow:${wt}"><div class="gn">休<br>息</div><div><div class="tr"><div class="p ${rest.length?'':'empty'}">${rest.length?rest.map(n=>`<span class="pp">${chip(k,n)}</span>`).join(''):'—'}</div></div></div></div>`,n:wt+1,g:'休息'});}
   const tot=groups.reduce((a,x)=>a+x.n,0),cols=[[],[]];let acc=0;
   groups.forEach(x=>{const c=(acc<tot/2&&acc+x.n/2<=tot/2+1)?0:1;if(c===0)acc+=x.n;else acc=1e9;cols[c].push(x.h);});
   // 未編組（對照輪休表）
