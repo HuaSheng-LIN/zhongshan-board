@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="df15e9c7da0f">
+<meta name="build" content="d7dbfd733ded">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../../icon-192.png">
@@ -671,6 +671,24 @@ html.tv .vmini{min-height:0}
 .car.st-出勤中.c-aid .s{color:#ffd166}
 /* ===== v1.39 勤務車火警出勤：與水箱車相同閃紅 ===== */
 .car.st-出勤中.c-fire{animation:carR 1.2s infinite}
+/* ===== v1.49 出勤人員 3 人以上：名單改排在卡片右側（一行一人、字卡放大）；人名字卡固定在最上層 ===== */
+#cars .car .crew{z-index:3;background:rgba(11,18,32,.90)}
+#cars .car .crew .pc{position:relative;z-index:4;box-shadow:0 1px 3px rgba(0,0,0,.65)}
+.car.st-在隊 .vbtn,.car .vbtn{top:6px;bottom:auto;z-index:2}
+#cars .car.side{display:grid!important;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto auto minmax(0,1fr);column-gap:5px;padding-right:5px}
+#cars .car.side>.n{grid-column:1;font-size:44px!important;line-height:1!important}
+#cars .car.side>.n small{display:block!important;margin:0!important;font-size:11px!important;vertical-align:0!important;line-height:1.1}
+#cars .car.side>.s{grid-column:1;font-size:17px!important}
+#cars .car.side>.s small{display:block;margin-left:0}
+#cars .car.side>.d{grid-column:1}
+#cars .car.side>.crew.cout{grid-column:2;grid-row:1/-1;align-self:center;margin:0!important;padding:4px 5px!important;display:flex!important;flex-direction:column;gap:3px;min-width:0}
+#cars .car.side>.crew.cout .cw{display:flex}
+#cars .car.side>.crew.cout .cw[hidden]{display:none}
+#cars .car.side>.crew.cout .ck{margin:0!important}
+#cars .car.side>.crew.cout>.ck{display:none!important}   /* 右側排法省略「出勤人員」標題，空間留給名字 */
+#cars .car.side>.crew.cout{gap:2px}
+/* 摩托車：只顯示車號的精簡列，不再有圖示與展開 */
+#cars .vgroup.vfold .vlabel{cursor:default}
 /* ===== v1.48 卡片空間不足時的精簡標題：車號縮小、狀態與時間排成一行，把空間讓給人員名單 ===== */
 #cars .car.vcomp{padding-top:3px!important}
 #cars .car.vcomp .n{font-size:36px!important;line-height:1!important}
@@ -1076,7 +1094,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.48';   // 版本號：每次發布時更新
+const APP_VER='v1.49';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -2301,7 +2319,7 @@ function renderHead(){
 function renderCars(){
   renderActive();
   const now=Date.now(),types=[...new Set(S.vehicles.map(v=>v.type))];
-  const fold=t=>t==='摩托車'&&S.motoFold!==false;
+  const fold=t=>t==='摩托車';   // 摩托車一律用精簡列（只顯示車號與狀態）
   document.getElementById('cars').innerHTML=types.map(t=>fold(t)?motoBar(t):`<div class="vgroup">${t==='摩托車'?`<div class="vlabel vfoldbtn" onclick="motoToggle()" title="收合摩托車">${esc(t)}<i>▲</i></div>`:`<div class="vlabel">${esc(t)}</div>`}<div class="cars" style="grid-template-columns:repeat(${Math.min(3,S.vehicles.filter(v=>v.type===t).length)},minmax(0,1fr))">`+
     S.vehicles.map((v,i)=>{const a=artOf(v);return v.type!==t?'':`
       <div class="car st-${v.status} ${a?'art':''}${a&&a[0]==='p'?' photo':''} ${v.type==='水箱車'?'t-fire':v.type==='救護車'?'t-ems':v.type==='摩托車'?'t-moto':''} ${(v.status==='出勤中'||v.status==='返隊中')&&isTrain(v.case)?'c-train':''} ${v.type==='勤務車'?(v.case==='火警'?'c-fire':isAid(v.case)?'c-aid':''):''}" ${a?`style="--art:${VEH_URL[a].replace(/"/g,'&quot;')}"`:''} onclick="openCar(${i})">
@@ -2313,15 +2331,16 @@ function renderCars(){
 // 摩托車收合：只顯示一條精簡列（車號＋狀態），點箭頭展開
 function motoBar(t){
   const list=S.vehicles.map((v,i)=>[v,i]).filter(([v])=>v.type===t);
-  return `<div class="vgroup vfold"><div class="vlabel vfoldbtn" onclick="motoToggle()" title="展開摩托車">${esc(t)}<i>▼</i></div><div class="vmini">`+
+  return `<div class="vgroup vfold"><div class="vlabel">${esc(t)}</div><div class="vmini">`+
     list.map(([v,i])=>{const out=v.status==='出勤中'||v.status==='返隊中';
       return `<span class="vm st-${v.status} ${out&&isTrain(v.case)?'c-train':''}" onclick="openCar(${i})"><b>${esc(v.name)}</b>${esc(v.status)}${out&&v.case?`<small>${esc(v.case)}</small>`:''}${out&&v.crewNames&&v.crewNames.length?`<small>${v.crewNames.length} 人</small>`:''}</span>`;}).join('')+
-    `<span class="vmore" onclick="motoToggle()">展開 ▼</span></div></div>`;
+    `</div></div>`;
 }
 function motoToggle(){if(TV)return;S.motoFold=S.motoFold===false;save();renderCars();}
 // 出勤人員字卡：依卡片空間取最大字級（與當班人員字卡同大為上限）
 // 救護車與兩人以下一行一人（與 92 當班人員相同）；三人以上一行兩人；放不下才顯示「＋N 人」
 const crewFitCache={};
+const SIDE_MIN=3;   // 出勤人員達這個人數就改排在卡片右側
 function fitCrew(){
   document.querySelectorAll('#cars .car .crew.cout').forEach(cr=>{
     const card=cr.closest('.car');if(!card)return;
@@ -2329,7 +2348,7 @@ function fitCrew(){
     const clips=[card];for(let e=card.parentElement;e&&e!==document.body;e=e.parentElement){if(/hidden|auto|scroll|clip/.test(getComputedStyle(e).overflowY))clips.push(e);if(e.classList.contains('panel'))break;}
     const lim=()=>Math.min(...clips.map(e=>e.getBoundingClientRect().bottom));
     const lastBox=card.querySelector('.crew.vcrew');if(lastBox&&!lastBox.classList.contains('in'))volInline(card,cr);   // 出勤中：志工放在標題列右側
-    const over=()=>cr.getBoundingClientRect().bottom>lim()-2;
+    const over=()=>{const b=cr.getBoundingClientRect();return b.bottom>lim()-2||(card.classList.contains('side')&&b.top<card.getBoundingClientRect().top+1);};
     const cr0=()=>Math.min(cr.getBoundingClientRect().right,card.getBoundingClientRect().right);
     const cut=()=>items.some(x=>{if(x.hidden)return false;const pc=x.querySelector('.pc');if(!pc)return false;const pr=pc.getBoundingClientRect();
       return pc.scrollWidth>pc.offsetWidth+1||[...pc.children].some(c=>c.scrollWidth>c.offsetWidth+1)||pr.right>x.getBoundingClientRect().right+1||pr.right>cr0()+1;});
@@ -2338,7 +2357,7 @@ function fitCrew(){
     // 排版條件：卡片寬高、人員、志工，加上狀態與案件文字（出勤中→返隊中、案件名稱長短都會改變可用高度）
     const sig=card.getBoundingClientRect().width.toFixed(0)+'x'+lim().toFixed(0)+'|'+items.map(x=>x.textContent).join(',')+'|'+(lastBox?lastBox.textContent:'')+'|'+((card.querySelector('.s')||{}).textContent||'');
     const key=card.querySelector('.n').textContent;
-    const apply=r=>{card.classList.toggle('vcomp',!!r.comp);set(r.one,r.f,r.hid);};
+    const apply=r=>{card.classList.toggle('side',!!r.side);card.classList.toggle('vcomp',!!r.comp);set(r.one,r.f,r.hid);};
     // 沿用上次結果前一定重新量一次，放不下就重算（避免沿用舊排版而被切掉）
     const hit=crewFitCache[key];if(hit&&hit.sig===sig){apply(hit);if(!cut()&&!over())return;}
     const fMax=TV?21:19,fMin=11;
@@ -2348,12 +2367,24 @@ function fitCrew(){
         for(const one of (pl||plans))for(let f=fMax;f>=fMin;f--){set(one,f,hid);if(!cut()&&!over()){if(!best||f>best.f||(f===best.f&&one===(n<=2)))best={one,f};break;}}
         if(best)return {one:best.one,f:best.f,hid,ok:true};}
       return {one:true,f:fMin,hid:Math.max(0,n-1),ok:false};};
-    card.classList.remove('vcomp');
+    card.classList.remove('vcomp','side');
+    // 右側排法：一行一人，字卡最大到 22
+    const trySide=()=>{card.classList.remove('vcomp');card.classList.add('side');let res=null;
+      const overS=()=>{const b=cr.getBoundingClientRect(),c=card.getBoundingClientRect();return b.bottom>lim()-2||b.top<c.top+1;};
+      out:for(let hid=0;hid<n;hid++)for(let f=22;f>=fMin;f--){set(true,f,hid);if(!cut()&&!overS()){res={one:true,f,hid,ok:true,side:true};break out;}}
+      card.classList.remove('side');return res;};
+    // 3 人以上：先試右側；放得下且字夠大就直接採用
+    let rs=null;
+    if(n>=SIDE_MIN){rs=trySide();if(rs&&rs.hid===0&&rs.f>=17){apply(rs);crewFitCache[key]={sig,...rs};return;}}
     let r=solve();
     // 放不下、要隱藏人員或字太小 → 改用精簡標題再排一次，取較好的結果
     if(!r.ok||r.hid>0||r.f<16){card.classList.add('vcomp');const r2=solve([true,false]);   // 精簡標題時救護車也可一行兩人
       if(r2.ok&&(!r.ok||r2.hid<r.hid||(r2.hid===r.hid&&r2.f>r.f)))r={...r2,comp:true};}
-    apply(r);crewFitCache[key]={sig,one:r.one,f:r.f,hid:r.hid,comp:!!r.comp};
+    // 右側排法雖不理想，但仍比下方排法好（少隱藏人或字較大）時採用
+    // 兩人以下原則上排下方；但下方放不下或字太小（<17）時也試右側，哪一種字大就用哪一種（人名可視度優先）
+    if(!rs&&(!r.ok||r.hid>0||r.f<17))rs=trySide();
+    if(rs&&(!r.ok||rs.hid<r.hid||(rs.hid===r.hid&&(n>=SIDE_MIN?rs.f>=r.f:rs.f>r.f))))r=rs;
+    apply(r);crewFitCache[key]={sig,one:r.one,f:r.f,hid:r.hid,comp:!!r.comp,side:!!r.side};
   });
 }
 // 志工列移到當班（或出勤）人員框的標題列右側
