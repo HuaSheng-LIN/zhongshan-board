@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="9eb2bb1eec12">
+<meta name="build" content="ade51c4c0380">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -2346,7 +2346,7 @@ function renderHead(){
   const low=ib.n<=S.lowStaff;
   const warn=low?`<div class="warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 1 21h22z" fill="#ff3b3b"/><path d="M12 9v5" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.5" fill="#fff"/></svg>注意人力</div>`:'';
   const inBox=`<div class="bx in ${low?'alert':''}" title="${esc(ib.detail)}"><div class="k">目前在隊</div><div class="v">${ib.n}<small>人</small></div>${warn}</div>`;
-  const sub=`<div class="sub">${ib.parts.length?ib.parts.map(([a,b])=>`${esc(a)} <b>${b}</b>`).join('・'):'目前沒有人離隊'}${r.d!==r.n?`　（白天 ${r.d} 人）`:''}</div>`;
+  const sub=`<div class="sub">${ib.parts.length?ib.parts.map(([a,b])=>`${esc(a)} <b>${b}</b>`).join('・'):'當日上班人員皆在隊上'}${r.d!==r.n?`　（白天 ${r.d} 人）`:''}</div>`;
   // 電視：「目前在隊」放在區塊下方空白處並放大；值班台：並排
   if(TV){document.getElementById('hc2').innerHTML=upBox;document.getElementById('hcIn').innerHTML=inBox+sub;}
   else{document.getElementById('hc2').innerHTML=upBox+inBox+sub;document.getElementById('hcIn').innerHTML='';}
