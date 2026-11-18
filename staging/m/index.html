@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="5af360bfadd7">
+<meta name="build" content="ff009b52699e">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../../icon-192.png">
@@ -1121,7 +1121,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.52';   // 版本號：每次發布時更新
+const APP_VER='v1.53';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -1769,7 +1769,7 @@ function autoTask(k,sc){
     const pl=pool();
     if(pres.length+pl.length<2||!pres.concat(pl).some(n=>!noDrive(n,'15')))g15s.stand=true;
     // 不出勤時也不顯示 91 當班者與駕駛座上的役男（他們不會在 15 車上）
-    if(g15s.stand)g15s.rows.forEach(x=>{x.names=x.names.map(n=>n&&(on91.has(stripNo(n))||(isDrv(x.role)&&noCrew(n)))?'':n);});}
+    if(g15s.stand)g15s.rows.forEach(x=>{x.names=x.names.map(n=>n&&(on91.has(stripNo(n))||noCrew(n))?'':n);});}
   const ordered=[...G].filter(g=>!frozen(g)&&!g.stand).sort((a,b)=>prio(a)-prio(b));
   ordered.forEach(g=>{
     const is11=gNo(g.g)==='11';
@@ -1778,7 +1778,7 @@ function autoTask(k,sc){
     rowsIdx.forEach(ri=>{const x=g.rows[ri];
       x.names.forEach((n,pi)=>{
         if(!x.orig[pi])return;                            // 原本就空著的位置不補
-        const badDrv=!!n&&isDrv(x.role)&&noCrew(n);       // 役男不能駕駛
+        const badDrv=!!n&&noCrew(n);                      // 役男只排火警值班，不上任何車（駕駛、瞄子手…都不行）
         if(n&&!away(n,g)&&!badDrv)return;                 // 人在 → 不動
         const from=x.orig[pi];
         if(is11&&/指揮/.test(x.role)){
