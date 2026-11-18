@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="ff009b52699e">
+<meta name="build" content="9eb2bb1eec12">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -1757,11 +1757,11 @@ function autoTask(k,sc){
     if(seat(gOf('86'),/^駕駛/))return;
     seat(gOf('85'),/^駕駛/);
   });
-  // 15 車：在場可出勤的人（非役男、非 91 當班）不足 2 人或沒有人能駕駛 → 人力不足不出勤，不替 15 補人
+  // 15 車：只要有人能駕駛就可出勤（一人駕駛也可以）；在場（含未排車者）沒有任何人能駕駛 → 人力不足不出勤，不替 15 補人
   const g15s=G.find(g=>gNo(g.g)==='15');
   if(g15s&&!frozen(g15s)){const pres=g15s.rows.flatMap(x=>x.names).filter(n=>n&&!away(n,g15s)&&!noCrew(n));
     const pl=pool();
-    if(pres.length+pl.length<2||!pres.concat(pl).some(n=>!noDrive(n,'15')))g15s.stand=true;
+    if(!pres.concat(pl).some(n=>!noDrive(n,'15')))g15s.stand=true;
     // 不出勤時也不顯示 91 當班者與駕駛座上的役男（他們不會在 15 車上）
     if(g15s.stand)g15s.rows.forEach(x=>{x.names=x.names.map(n=>n&&(on91.has(stripNo(n))||noCrew(n))?'':n);});}
   const ordered=[...G].filter(g=>!frozen(g)&&!g.stand).sort((a,b)=>prio(a)-prio(b));
@@ -1799,6 +1799,8 @@ function autoTask(k,sc){
       });
     });
   });
+  // 補位後 15 車沒有駕駛（例：人員被調去補 11 車）→ 不出勤
+  if(g15s&&!frozen(g15s)&&!g15s.stand){const drv=g15s.rows.filter(x=>isDrv(x.role)).flatMap(x=>x.names).filter(n=>n&&!away(n,g15s)&&!noCrew(n));if(!drv.length)g15s.stand=true;}
   // 11 車：聯絡員＋瞄子手至少一位資深（滿 3 年；在場都未滿 3 年時，以在場年資最高者為資深）
   const g11=G.find(g=>gNo(g.g)==='11');
   if(hasQual&&g11&&!frozen(g11)){
