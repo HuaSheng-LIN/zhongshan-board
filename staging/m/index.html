@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="ade51c4c0380">
+<meta name="build" content="2d631ec7e29e">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../../icon-192.png">
@@ -662,6 +662,11 @@ html.mob body>header,html.mob body>main,html.mob #updBar,html.mob #toast{display
 #unauthBar[hidden]{display:none}
 #unauthBar button{font-family:inherit;font-size:16px;font-weight:700;padding:6px 14px;border-radius:8px;border:2px solid #fff;background:#0004;color:#fff;cursor:pointer}
 html.tv #unauthBar,html.mob #unauthBar{display:none!important}
+#unauthBar{flex-wrap:wrap;row-gap:6px}
+#unauthBar .ubKey{display:inline-flex;align-items:center;gap:6px;padding-left:14px;border-left:2px solid #fff6}
+#unauthBar input{font-family:inherit;font-size:16px;padding:5px 8px;border-radius:8px;border:2px solid #fff;background:#fff;color:#111;width:150px}
+#unauthBar #ubMsg{font-size:14px;font-weight:700;color:#fff3b0}
+#unauthBar.bad .ubRO{display:none}
 /* ===== v1.36 出勤人員一行兩人、放不下顯示「＋N 人」 ===== */
 .car .crew.cout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:3px 4px;align-items:center;justify-items:start}
 .car .crew.cout.one{grid-template-columns:minmax(0,1fr)}
@@ -749,7 +754,8 @@ html.tv #cars .car .crew .vcrew.in .pc{font-size:16px!important}
 <body>
 
 <div id="mob" hidden></div>
-<div id="unauthBar" hidden>⚠ 本電腦未經授權。請改用唯讀版<button onclick="openRO('tv/')">📺 開啟電視版</button><button onclick="openRO('m/')">📱 開啟行動版</button></div>
+<div id="unauthBar" hidden><span id="ubText">⚠ 本電腦未經授權。請改用唯讀版</span><button class="ubRO" onclick="openRO('tv/')">📺 開啟電視版</button><button class="ubRO" onclick="openRO('m/')">📱 開啟行動版</button>
+  <span class="ubKey">值班台請輸入同步密碼<input id="ubKey" type="password" autocomplete="off" placeholder="同步密碼" onkeydown="if(event.key==='Enter')ubSave()"><button onclick="ubSave()">確定</button><span id="ubMsg"></span></span></div>
 <header>
   <div class="logo">🚒</div>
   <div>
@@ -2788,7 +2794,7 @@ function dynSend(payload,force){
     const cb='__dy'+Math.random().toString(36).slice(2),sc=document.createElement('script');
     const done=r=>{clearTimeout(to);delete window[cb];sc.remove();resolve(r);};
     const to=setTimeout(()=>done({ok:false,error:'逾時'}),30000);
-    window[cb]=res=>done(res||{ok:false,error:'未知錯誤'});
+    window[cb]=res=>{keyResult(res);done(res||{ok:false,error:'未知錯誤'});};
     sc.onerror=()=>done({ok:false,error:'無法連線到同步中繼站'});
     const strip=x=>x?{...x,slot:undefined}:null;
     sc.src=S.liveUrl+(S.liveUrl.includes('?')?'&':'?')+'action=dyn&callback='+cb+'&key='+encodeURIComponent(key)+'&id='+encodeURIComponent(id)
@@ -2884,7 +2890,7 @@ function jsonp(url,params,ms){
     const cb='__jp'+Math.random().toString(36).slice(2),sc=document.createElement('script');
     const done=r=>{clearTimeout(to);delete window[cb];sc.remove();resolve(r);};
     const to=setTimeout(()=>done({ok:false,error:'逾時'}),ms||30000);
-    window[cb]=r=>done(r||{ok:false,error:'未知錯誤'});
+    window[cb]=r=>{keyResult(r);done(r||{ok:false,error:'未知錯誤'});};
     sc.onerror=()=>done({ok:false,error:'無法連線到同步中繼站'});
     sc.src=url+(url.includes('?')?'&':'?')+Object.entries({...params,callback:cb,_:Date.now()}).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
     document.head.appendChild(sc);
@@ -3115,7 +3121,41 @@ window.addEventListener('storage',()=>{S=load();renderAll();});
 // 值班台網址在沒有同步密碼的電腦上開啟時，修改不會同步，提示改用唯讀版
 function openRO(sub){location.href=location.pathname.replace(/index\.html$/,'').replace(/\/?$/,'/')+sub;}
 function unauthShow(){const el=document.getElementById('unauthBar');if(!el)return;
-  el.hidden=TV||!S.liveUrl||!!localStorage.getItem(KEY+'.key');}
+  const has=!!localStorage.getItem(KEY+'.key');
+  el.hidden=TV||!S.liveUrl||(has&&!keyBad);
+  el.classList.toggle('bad',has&&keyBad);
+  const t=document.getElementById('ubText');if(t)t.textContent=has&&keyBad?'⚠ 同步密碼錯誤，看板的修改目前沒有同步到電視與動態表':'⚠ 本電腦未經授權。請改用唯讀版';}
+// 同步密碼錯誤偵測：中繼站回覆「密碼錯誤」→ 顯示提示列；之後有成功回覆就收起
+let keyBad=false;
+function keyResult(r){
+  if(TV||!r)return;
+  if(r.error==='密碼錯誤'&&localStorage.getItem(KEY+'.key')){if(!keyBad){keyBad=true;logEvent('同步','中繼站回覆同步密碼錯誤');unauthShow();}}
+  else if(r.ok===true&&keyBad){keyBad=false;unauthShow();}
+}
+// 提示列直接輸入同步密碼：先向中繼站驗證，正確才儲存；連續錯 5 次暫停 10 分鐘
+function ubSave(){
+  const inp=document.getElementById('ubKey'),msg=document.getElementById('ubMsg'),v=inp.value.trim();
+  if(!v){msg.textContent='請輸入同步密碼';return;}
+  if(!S.liveUrl){msg.textContent='尚未設定中繼站網址';return;}
+  const F=KEY+'.kfail';let f={};try{f=JSON.parse(localStorage.getItem(F))||{};}catch(e){}
+  if(f.until&&f.until>Date.now()){msg.textContent=`錯誤次數過多，請 ${Math.ceil((f.until-Date.now())/60000)} 分鐘後再試`;return;}
+  msg.textContent='驗證中…';
+  jsonp(S.liveUrl,{action:'logread',key:v,day:'2000-1-1'},20000).then(r=>{
+    if(r&&r.ok===true){
+      localStorage.setItem(KEY+'.key',v);localStorage.removeItem(F);inp.value='';msg.textContent='';keyBad=false;
+      logEvent('操作','於提示列重新輸入同步密碼（驗證通過）');unauthShow();
+      // 先讀取雲端最新資料，再恢復動態表與人員資格表的同步（不以本機資料覆蓋雲端）
+      Promise.resolve(livePull()).then(()=>{livePulled=true;try{dynAutoSoon();}catch(e){}qualFetch(false);});
+      setTimeout(()=>alert('✔ 同步密碼正確，已恢復同步'),50);
+    }else if(r&&r.error==='密碼錯誤'){
+      f.n=(f.n||0)+1;if(f.n>=5){f.until=Date.now()+600000;f.n=0;}localStorage.setItem(F,JSON.stringify(f));
+      msg.textContent=f.until&&f.until>Date.now()?'錯誤次數過多，請 10 分鐘後再試':`同步密碼錯誤（再錯 ${5-f.n} 次將暫停 10 分鐘）`;
+      logEvent('操作','提示列輸入同步密碼錯誤');
+    }else msg.textContent='目前無法連線到中繼站，請確認網路後再試';
+  });
+}
+// 請瀏覽器保留本網站資料（避免空間不足時自動清理而遺失同步密碼）
+if(!TV&&navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>{if(!p)navigator.storage.persist().catch(()=>{});}).catch(()=>{});
 // ===== 行動版畫面 =====
 let mobSlotOff=0;const mobOpen={};
 function mobSlot(n){mobSlotOff+=n;renderMob();}
