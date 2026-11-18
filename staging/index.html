@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="9072ec3d8693">
+<meta name="build" content="5af360bfadd7">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
@@ -199,6 +199,12 @@ html.tv #pTab .tcol .tg.trest .tr .p .pc{font-size:min(17px,58cqh)!important}
 html.tv #pTab .tcol .tg.trest.rows2 .tr .p .pc{font-size:min(17px,29cqh)!important}
 html.tv #pTab .tcol .tg.trest.rows3 .tr .p .pc{font-size:min(16px,19cqh)!important}
 html.tv #pTab .tcol .tg.trest .p{padding:0 6px;gap:2px 5px}
+/* 即時任務編組：15 車人力不足不出勤 */
+#task .tg.tstand>div:last-child,#mob .tg.tstand>div:last-child{position:relative;opacity:.5}
+#task .tg.tstand,#mob .tg.tstand{position:relative}
+#task .tg.tstand>.gn,#mob .tg.tstand>.gn{opacity:.6}
+#task .tg.tstand::after,#mob .tg.tstand::after{content:'人力不足・不出勤';position:absolute;left:50%;top:50%;transform:translate(-30%,-50%);padding:4px 12px;border-radius:6px;background:#3a1418;border:1px solid #e06666;color:#ffb3b3;font-weight:700;font-size:15px;white-space:nowrap;pointer-events:none}
+html.tv #pTab .tg.tstand::after{font-size:14px;padding:2px 10px}
 /* 即時任務編組：補位標示 */
 #task .bu,#mob .bu{display:inline-block;margin-left:4px;padding:0 .35em;border-radius:.3em;background:#f6b26b;color:#1b1b1b;font-weight:900;font-size:.78em;line-height:1.35;vertical-align:middle;letter-spacing:0}
 #task .pp.ovc{cursor:pointer}
@@ -1109,7 +1115,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.51';   // 版本號：每次發布時更新
+const APP_VER='v1.52';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -1660,7 +1666,9 @@ const CADRE_DRIVE=['15','86','85'];
 function driveBanFn(k,ld,present){
   const r=S.rot[k],cad=r?r.on.filter(p=>p.no>=1&&p.no<=4).map(p=>p.name):[];
   const pres=cad.filter(n=>!present||present(n));
-  const ban=(n,g)=>{n=stripNo(n);if(!cad.includes(n))return false;if(n===ld||pres.length<2)return true;return !CADRE_DRIVE.includes(gNo(g));};
+  const conscript=n=>{const p=r?r.on.find(x=>x.name===n):null,q=qualOf(n);return !!(q&&q.x)||/役男|替代役/.test((p&&p.t)||(q&&q.t)||'');};
+  const ban=(n,g)=>{n=stripNo(n);if(conscript(n))return true;   // 役男不駕駛任何車輛（摩托車不在編組內）
+    if(!cad.includes(n))return false;if(n===ld||pres.length<2)return true;return !CADRE_DRIVE.includes(gNo(g));};
   ban.cadres=cad;ban.present=pres;return ban;
 }
 function autoTask(k,sc){
@@ -1684,7 +1692,7 @@ function autoTask(k,sc){
   // 91 車：依「今日勤務表」目前時段的當班人員（例：緊急救護），不看試算表左側編組；這些人不再排其他車
   const v91=S.vehicles.find(v=>v.name==='91'),e91=(slot&&v91&&v91.crew?(slot.cells[v91.crew]||[]):[]).map(stripNo).filter(Boolean);
   if(e91.length){let g91=G.find(g=>gNo(g.g)==='91');if(!g91){g91={g:'91車',rows:[]};G.push(g91);}
-    g91.rows=e91.map((n,i)=>({role:i?'救護員':'駕駛',names:[n],orig:[n],sheet:[n]}));g91.slot=true;}
+    g91.rows=[{role:v91.crew||'當班',names:[...e91],orig:[...e91],sheet:[...e91]}];g91.slot=true;}   // 91 不指定駕駛與救護員
   const on91=new Set(e91);
   ov.forEach(o=>{const g=G.find(x=>x.g===o.g);if(!g)return;for(const x of g.rows){const i=x.sheet.indexOf(o.from);if(i>=0){x.names[i]=o.to||'';x.orig[i]=o.to||'';break;}}});
   const fills={},changes=[];
@@ -1709,7 +1717,8 @@ function autoTask(k,sc){
   const pick=(g,ri,order)=>{
     const role=g.rows[ri].role,okFor=n=>!(isDrv(role)&&noDrive(n,g.g))&&!g.rows.some(x=>x.names.includes(n));
     const pl=pool().filter(okFor).sort(order);if(pl.length)return {n:pl[0],loc:null};
-    const donors=G.filter(d=>d!==g&&!frozen(d)&&prio(d)>prio(g)).sort((a,b)=>prio(b)-prio(a));
+    // 15 車人力不足不出勤時，它的人員最先讓給 11 車
+    const donors=G.filter(d=>d!==g&&!frozen(d)&&(prio(d)>prio(g)||(d.stand&&gNo(g.g)==='11'))).sort((a,b)=>(b.stand?99:prio(b))-(a.stand?99:prio(a)));
     for(const d of donors){
       const c=[];d.rows.forEach((x,dri)=>x.names.forEach((n,dpi)=>{if(n&&okFor(n)&&!away(n,d)&&!noCrew(n))c.push({n,loc:{g:d,ri:dri,pi:dpi},drv:isDrv(x.role)});}));
       if(!c.length)continue;
@@ -1748,7 +1757,14 @@ function autoTask(k,sc){
     if(seat(gOf('86'),/^駕駛/))return;
     seat(gOf('85'),/^駕駛/);
   });
-  const ordered=[...G].filter(g=>!frozen(g)).sort((a,b)=>prio(a)-prio(b));
+  // 15 車：在場可出勤的人（非役男、非 91 當班）不足 2 人或沒有人能駕駛 → 人力不足不出勤，不替 15 補人
+  const g15s=G.find(g=>gNo(g.g)==='15');
+  if(g15s&&!frozen(g15s)){const pres=g15s.rows.flatMap(x=>x.names).filter(n=>n&&!away(n,g15s)&&!noCrew(n));
+    const pl=pool();
+    if(pres.length+pl.length<2||!pres.concat(pl).some(n=>!noDrive(n,'15')))g15s.stand=true;
+    // 不出勤時也不顯示 91 當班者與駕駛座上的役男（他們不會在 15 車上）
+    if(g15s.stand)g15s.rows.forEach(x=>{x.names=x.names.map(n=>n&&(on91.has(stripNo(n))||(isDrv(x.role)&&noCrew(n)))?'':n);});}
+  const ordered=[...G].filter(g=>!frozen(g)&&!g.stand).sort((a,b)=>prio(a)-prio(b));
   ordered.forEach(g=>{
     const is11=gNo(g.g)==='11';
     const rowsIdx=g.rows.map((_,i)=>i);
@@ -1756,7 +1772,8 @@ function autoTask(k,sc){
     rowsIdx.forEach(ri=>{const x=g.rows[ri];
       x.names.forEach((n,pi)=>{
         if(!x.orig[pi])return;                            // 原本就空著的位置不補
-        if(n&&!away(n,g))return;                          // 人在 → 不動
+        const badDrv=!!n&&isDrv(x.role)&&noCrew(n);       // 役男不能駕駛
+        if(n&&!away(n,g)&&!badDrv)return;                 // 人在 → 不動
         const from=x.orig[pi];
         if(is11&&/指揮/.test(x.role)){
           // 指揮官：帶隊官 → 其他在勤小隊長（番號 1–4）→ 年資最深
@@ -1775,7 +1792,7 @@ function autoTask(k,sc){
         const got=pick(g,ri,needSen?seniorFirst:(is11?seniorFirst:juniorFirst));
         if(!got){                                         // 找不到人：保留原本人員與狀態
           // 例外：目前時段在 91 車當班的人不會同時在別台車，位置改為空白（顯示「—」）
-          if(n&&on91.has(stripNo(n))){x.names[pi]='';changes.push({g:g.g,from:n,to:''});}
+          if(n&&(on91.has(stripNo(n))||badDrv)){x.names[pi]='';changes.push({g:g.g,from:n,to:''});}
           return;}
         if(got.loc)take(got.loc);
         put(g,ri,pi,got.n,from);
@@ -1804,7 +1821,7 @@ function autoTask(k,sc){
       }
     }
   }
-  return {G,fills,changes,away:(n,g)=>away(n,g||null),noDrive};
+  return {G,fills,changes,away:(n,g)=>away(n,g||null),noDrive,stand15:!!(g15s&&g15s.stand)};
 }
 // 依自動補位結果檢查是否需要重畫（車輛出勤、時段變更、狀態改變時）
 let lastAutoSig='',lastAutoLog='';
@@ -1816,7 +1833,7 @@ function autoSig(){
 function autoCheck(){const s=autoSig();if(s!==lastAutoSig)renderDuty();}
 function autoLog(k,a){
   if(TV||viewOff!==0)return;
-  const t=a.changes.filter(c=>c.from!==c.to).map(c=>`${c.g} ${c.from?fmtNo(k,c.from):'（空）'}→${c.to?fmtNo(k,c.to):'（空，在 91 當班）'}`).join('、');
+  const t=a.changes.filter(c=>c.from!==c.to).map(c=>`${c.g} ${c.from?fmtNo(k,c.from):'（空）'}→${c.to?fmtNo(k,c.to):'（空）'}`).join('、');
   if(t===lastAutoLog)return;
   if(lastAutoLog!==''||t)logEvent('編組',t?'自動補位：'+t:'自動補位解除，恢復原編組');
   lastAutoLog=t;
@@ -1882,7 +1899,7 @@ function renderTaskSheet(k,sc){
   // 顯示用：人名 → 原本位置的人（點選調整用）
   const origOf={};
   if(au)au.G.forEach(g=>{const m=origOf[g.g]={};g.rows.forEach(x=>x.names.forEach((n,i)=>{if(n)m[n]=x.sheet[i];}));});
-  const groupsSrc=au?au.G.map(g=>({g:g.g,rows:g.rows.map(x=>{const nm=x.names.filter(Boolean);return {role:x.role,names:nm,name:nm.join('、')};})})):null;
+  const groupsSrc=au?au.G.map(g=>({g:g.g,slot:g.slot,stand:g.stand,rows:g.rows.map(x=>{const nm=x.names.filter(Boolean);return {role:x.role,names:nm,name:nm.join('、')};})})):null;
   const pplOf=r=>r.names||splitPeople(r.name);
   // 幹部駕駛限制（今天依實際在勤幹部；其他日子依輪休表）
   const ban=au?au.noDrive:driveBanFn(k,ldName,null);
@@ -1901,7 +1918,7 @@ function renderTaskSheet(k,sc){
       r.names.splice(i,1);const o=rows.find(x=>!/^駕駛|指揮/.test(x.role));if(o)o.names.push(n);else rows.push({role:'隊員',names:[n]});});});
     rows.forEach(r=>{r.name=r.names.join('、');});return rows;};
   const groups=(groupsSrc||filled).map(g0=>{
-    const g=/^9\d|^86/.test(g0.g)?{...g0,rows:orderRows(g0)}:{...g0,rows:noLeaderDriver(g0)};
+    const g=g0.slot?g0:/^9\d|^86/.test(g0.g)?{...g0,rows:orderRows(g0)}:{...g0,rows:noLeaderDriver(g0)};
     const rows=g.rows.map(r=>{
       const ppl=r.names||splitPeople(r.name);
       const fl=fillOf(g.g);
@@ -1911,7 +1928,7 @@ function renderTaskSheet(k,sc){
       return `<div class="tr"${ppl.length>1?` style="flex-grow:${1+0.9*(ppl.length-1)}"`:''}><div class="r">${roleHtml(r.role)}</div><div class="p ${ppl.length?'':'empty'}${ppl.length>1?' multi':''}"${ppl.length>1?` style="--pn:${ppl.length}"`:''}>${ppl.length?ppl.map(n=>`<span class="pp${ovc(n)}">${one(n)}</span>`).join(''):'—'}</div></div>`;}).join('');
     // 高度依人數分配：同一格有多人時給較多高度，避免被切掉
     const wt=g.rows.reduce((t,r)=>{const n=(r.names||splitPeople(r.name)).length;return t+(n>1?1+0.9*(n-1):1);},0);
-    return {h:`<div class="tg${wt<=1?' tg1':''}" style="--gc:${gColor(g.g)};flex-grow:${wt}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:wt+1,g:g.g};
+    return {h:`<div class="tg${wt<=1?' tg1':''}${g0.stand?' tstand':''}" style="--gc:${gColor(g.g)};flex-grow:${wt}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:wt+1,g:g.g};
   });
   // 休息：今日勤務表目前時段的休息班人員（只在今天顯示），放在火警值班上面
   if(slot){const rest=(slot.cells['休息']||[]).filter(Boolean),rws=Math.min(3,Math.max(1,Math.ceil(rest.length/4))),wt=rws*1.05;
@@ -2270,14 +2287,18 @@ function crewCount(v,on){
 }
 function inBase(k,r){
   const d=new Date(),sc=S.sched[k],slot=sc&&sc.slots.length?sc.slots[curSlot(sc,d)]:null;
-  const out=new Map(),parts=[];   // 姓名 → 原因
-  const add=(names,why)=>{let c=0;names.forEach(n=>{const nm=stripNo(n);if(nm&&!out.has(nm)){out.set(nm,why);c++;}});if(c)parts.push([why,c]);};
-  if(slot)(S.awayCols||[]).forEach(c=>add(slot.cells[c]||[],c));
-  // 只扣今天有上班的人
   const onNames=new Set(r.on.map(p=>p.name));
-  let n=0;out.forEach((_,nm)=>{if(onNames.has(nm))n++;});
-  // 出勤車輛：依出動時填寫的人數（未填則用車輛預設人數）
-  S.vehicles.filter(v=>v.status==='出勤中'||v.status==='返隊中').forEach(v=>{const c=crewCount(v,onNames);if(c){n+=c;parts.push([v.name+' 出勤',c]);}});
+  const out=new Map(),parts=[];   // 姓名 → 原因（同一人只扣一次）
+  let n=0;
+  // 1. 出勤車輛：有點選出勤人員就照名單扣（只扣今天上班的人）；沒有名單則用出動時填的人數
+  S.vehicles.filter(v=>v.status==='出勤中'||v.status==='返隊中').forEach(v=>{
+    let c=0;
+    if(v.crewNames&&v.crewNames.length){v.crewNames.forEach(x=>{const nm=stripNo(x);if(onNames.has(nm)&&!out.has(nm)){out.set(nm,v.name+' 出勤');c++;}});}
+    else c=crewCount(v,onNames);
+    if(c){n+=c;parts.push([v.name+' 出勤',c]);}
+  });
+  // 2. 目前時段的外出類勤務：已隨車出勤的人不重複扣（例：外出勤務改用 15 車出勤）
+  if(slot)(S.awayCols||[]).forEach(col=>{let c=0;(slot.cells[col]||[]).forEach(x=>{const nm=stripNo(x);if(nm&&!out.has(nm)){out.set(nm,col);if(onNames.has(nm))c++;}});if(c){n+=c;parts.push([col,c]);}});
   return {n:Math.max(0,r.n-n),parts,detail:[...out].map(([a,b])=>fmtNo(k,a)+'：'+b).join('\n')};
 }
 
@@ -2589,14 +2610,15 @@ function firePresets(){
   ].filter(p=>p.cars.every(ok));
   // 建議：91 不在隊 → 只派 11；在隊人數足以坐滿 11+15+91 → 三車；否則 11+91
   const need=c=>c.reduce((a,n)=>a+(carBy(n).seats||0),0);
-  let rec=!ok('91')?'只派 11':(ib>=need(['11','15','91'])?'11＋15＋91':'11＋91');
+  let st15=false;try{const sc=S.sched[k];if(sc&&sc.groups.length)st15=autoTask(k,sc).stand15;}catch(e){}
+  let rec=!ok('91')?'只派 11':(ib>=need(['11','15','91'])&&!st15?'11＋15＋91':'11＋91');
   return {list,rec,ib};
 }
 // 出動時自動帶入「即時任務編組」該車的人員（只帶今日上班且目前在隊者；同一人只帶到第一台車）
 function taskCrew(name,taken){
   const k=dutyKey(new Date()),sc=S.sched[k];if(!sc||!sc.groups.length)return [];
   let a;try{a=autoTask(k,sc);}catch(e){return [];}
-  const g=a.G.find(x=>gNo(x.g)===String(name));if(!g)return [];
+  const g=a.G.find(x=>gNo(x.g)===String(name));if(!g||g.stand)return [];
   const on=onDutySet(),used=new Set(taken||[]);
   return [...new Set(g.rows.flatMap(x=>x.names).filter(Boolean))].filter(n=>on.has(n)&&!used.has(n)&&!a.away(n,g));
 }
@@ -2787,7 +2809,9 @@ function dynPayload(){
   const rows=[{item:'火警',veh:fire?fire.veh:dflt(S.dynFire),n:fire?fire.n:''},{item:'救護',veh:ems?ems.veh:dflt(S.dynEms),n:ems?ems.n:''}];
   const extra=gl.filter(x=>x.item!=='火警'&&x.item!=='救護').map(x=>({item:x.item,veh:x.cars.join('+'),n:x.n}));
   // 目前時段的外出類勤務（休息另列）
-  if(slot)(S.awayCols||[]).filter(c=>c!=='休息').forEach(c=>{const n=(slot.cells[c]||[]).length;if(n)extra.push({item:c,veh:'',n});});
+  // 已在出勤車輛上的人（例：外出勤務改用 15 車出勤）不重複計入外出勤務列
+  const onCar=new Set(out.flatMap(v=>(v.crewNames||[]).map(stripNo)));
+  if(slot)(S.awayCols||[]).filter(c=>c!=='休息').forEach(c=>{const n=(slot.cells[c]||[]).filter(x=>!onCar.has(stripNo(x))).length;if(n)extra.push({item:c,veh:'',n});});
   while(extra.length>3){const a=extra.pop(),b=extra[2];b.item+='、'+a.item;b.veh=[b.veh,a.veh].filter(Boolean).join('+');b.n=(+b.n||0)+(+a.n||0);}
   while(extra.length<3)extra.push({item:'',veh:'',n:''});
   const rest=slot?(slot.cells['休息']||[]).length:'';
