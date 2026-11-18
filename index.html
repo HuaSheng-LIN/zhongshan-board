@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="5af360bfadd7">
+<meta name="build" content="2d631ec7e29e">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -657,6 +657,11 @@ html.mob body>header,html.mob body>main,html.mob #updBar,html.mob #toast{display
 #unauthBar[hidden]{display:none}
 #unauthBar button{font-family:inherit;font-size:16px;font-weight:700;padding:6px 14px;border-radius:8px;border:2px solid #fff;background:#0004;color:#fff;cursor:pointer}
 html.tv #unauthBar,html.mob #unauthBar{display:none!important}
+#unauthBar{flex-wrap:wrap;row-gap:6px}
+#unauthBar .ubKey{display:inline-flex;align-items:center;gap:6px;padding-left:14px;border-left:2px solid #fff6}
+#unauthBar input{font-family:inherit;font-size:16px;padding:5px 8px;border-radius:8px;border:2px solid #fff;background:#fff;color:#111;width:150px}
+#unauthBar #ubMsg{font-size:14px;font-weight:700;color:#fff3b0}
+#unauthBar.bad .ubRO{display:none}
 /* ===== v1.36 出勤人員一行兩人、放不下顯示「＋N 人」 ===== */
 .car .crew.cout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:3px 4px;align-items:center;justify-items:start}
 .car .crew.cout.one{grid-template-columns:minmax(0,1fr)}
@@ -744,7 +749,8 @@ html.tv #cars .car .crew .vcrew.in .pc{font-size:16px!important}
 <body>
 
 <div id="mob" hidden></div>
-<div id="unauthBar" hidden>⚠ 本電腦未經授權。請改用唯讀版<button onclick="openRO('tv/')">📺 開啟電視版</button><button onclick="openRO('m/')">📱 開啟行動版</button></div>
+<div id="unauthBar" hidden><span id="ubText">⚠ 本電腦未經授權。請改用唯讀版</span><button class="ubRO" onclick="openRO('tv/')">📺 開啟電視版</button><button class="ubRO" onclick="openRO('m/')">📱 開啟行動版</button>
+  <span class="ubKey">值班台請輸入同步密碼<input id="ubKey" type="password" autocomplete="off" placeholder="同步密碼" onkeydown="if(event.key==='Enter')ubSave()"><button onclick="ubSave()">確定</button><span id="ubMsg"></span></span></div>
 <header>
   <div class="logo">🚒</div>
   <div>
@@ -1116,7 +1122,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.52';   // 版本號：每次發布時更新
+const APP_VER='v1.53';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -1758,13 +1764,13 @@ function autoTask(k,sc){
     if(seat(gOf('86'),/^駕駛/))return;
     seat(gOf('85'),/^駕駛/);
   });
-  // 15 車：在場可出勤的人（非役男、非 91 當班）不足 2 人或沒有人能駕駛 → 人力不足不出勤，不替 15 補人
+  // 15 車：只要有人能駕駛就可出勤（一人駕駛也可以）；在場（含未排車者）沒有任何人能駕駛 → 人力不足不出勤，不替 15 補人
   const g15s=G.find(g=>gNo(g.g)==='15');
   if(g15s&&!frozen(g15s)){const pres=g15s.rows.flatMap(x=>x.names).filter(n=>n&&!away(n,g15s)&&!noCrew(n));
     const pl=pool();
-    if(pres.length+pl.length<2||!pres.concat(pl).some(n=>!noDrive(n,'15')))g15s.stand=true;
+    if(!pres.concat(pl).some(n=>!noDrive(n,'15')))g15s.stand=true;
     // 不出勤時也不顯示 91 當班者與駕駛座上的役男（他們不會在 15 車上）
-    if(g15s.stand)g15s.rows.forEach(x=>{x.names=x.names.map(n=>n&&(on91.has(stripNo(n))||(isDrv(x.role)&&noCrew(n)))?'':n);});}
+    if(g15s.stand)g15s.rows.forEach(x=>{x.names=x.names.map(n=>n&&(on91.has(stripNo(n))||noCrew(n))?'':n);});}
   const ordered=[...G].filter(g=>!frozen(g)&&!g.stand).sort((a,b)=>prio(a)-prio(b));
   ordered.forEach(g=>{
     const is11=gNo(g.g)==='11';
@@ -1773,7 +1779,7 @@ function autoTask(k,sc){
     rowsIdx.forEach(ri=>{const x=g.rows[ri];
       x.names.forEach((n,pi)=>{
         if(!x.orig[pi])return;                            // 原本就空著的位置不補
-        const badDrv=!!n&&isDrv(x.role)&&noCrew(n);       // 役男不能駕駛
+        const badDrv=!!n&&noCrew(n);                      // 役男只排火警值班，不上任何車（駕駛、瞄子手…都不行）
         if(n&&!away(n,g)&&!badDrv)return;                 // 人在 → 不動
         const from=x.orig[pi];
         if(is11&&/指揮/.test(x.role)){
@@ -1800,6 +1806,8 @@ function autoTask(k,sc){
       });
     });
   });
+  // 補位後 15 車沒有駕駛（例：人員被調去補 11 車）→ 不出勤
+  if(g15s&&!frozen(g15s)&&!g15s.stand){const drv=g15s.rows.filter(x=>isDrv(x.role)).flatMap(x=>x.names).filter(n=>n&&!away(n,g15s)&&!noCrew(n));if(!drv.length)g15s.stand=true;}
   // 11 車：聯絡員＋瞄子手至少一位資深（滿 3 年；在場都未滿 3 年時，以在場年資最高者為資深）
   const g11=G.find(g=>gNo(g.g)==='11');
   if(hasQual&&g11&&!frozen(g11)){
@@ -2345,7 +2353,7 @@ function renderHead(){
   const low=ib.n<=S.lowStaff;
   const warn=low?`<div class="warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 1 21h22z" fill="#ff3b3b"/><path d="M12 9v5" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.5" fill="#fff"/></svg>注意人力</div>`:'';
   const inBox=`<div class="bx in ${low?'alert':''}" title="${esc(ib.detail)}"><div class="k">目前在隊</div><div class="v">${ib.n}<small>人</small></div>${warn}</div>`;
-  const sub=`<div class="sub">${ib.parts.length?ib.parts.map(([a,b])=>`${esc(a)} <b>${b}</b>`).join('・'):'目前沒有人離隊'}${r.d!==r.n?`　（白天 ${r.d} 人）`:''}</div>`;
+  const sub=`<div class="sub">${ib.parts.length?ib.parts.map(([a,b])=>`${esc(a)} <b>${b}</b>`).join('・'):'當日上班人員皆在隊上'}${r.d!==r.n?`　（白天 ${r.d} 人）`:''}</div>`;
   // 電視：「目前在隊」放在區塊下方空白處並放大；值班台：並排
   if(TV){document.getElementById('hc2').innerHTML=upBox;document.getElementById('hcIn').innerHTML=inBox+sub;}
   else{document.getElementById('hc2').innerHTML=upBox+inBox+sub;document.getElementById('hcIn').innerHTML='';}
@@ -2781,7 +2789,7 @@ function dynSend(payload,force){
     const cb='__dy'+Math.random().toString(36).slice(2),sc=document.createElement('script');
     const done=r=>{clearTimeout(to);delete window[cb];sc.remove();resolve(r);};
     const to=setTimeout(()=>done({ok:false,error:'逾時'}),30000);
-    window[cb]=res=>done(res||{ok:false,error:'未知錯誤'});
+    window[cb]=res=>{keyResult(res);done(res||{ok:false,error:'未知錯誤'});};
     sc.onerror=()=>done({ok:false,error:'無法連線到同步中繼站'});
     const strip=x=>x?{...x,slot:undefined}:null;
     sc.src=S.liveUrl+(S.liveUrl.includes('?')?'&':'?')+'action=dyn&callback='+cb+'&key='+encodeURIComponent(key)+'&id='+encodeURIComponent(id)
@@ -2877,7 +2885,7 @@ function jsonp(url,params,ms){
     const cb='__jp'+Math.random().toString(36).slice(2),sc=document.createElement('script');
     const done=r=>{clearTimeout(to);delete window[cb];sc.remove();resolve(r);};
     const to=setTimeout(()=>done({ok:false,error:'逾時'}),ms||30000);
-    window[cb]=r=>done(r||{ok:false,error:'未知錯誤'});
+    window[cb]=r=>{keyResult(r);done(r||{ok:false,error:'未知錯誤'});};
     sc.onerror=()=>done({ok:false,error:'無法連線到同步中繼站'});
     sc.src=url+(url.includes('?')?'&':'?')+Object.entries({...params,callback:cb,_:Date.now()}).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
     document.head.appendChild(sc);
@@ -3108,7 +3116,41 @@ window.addEventListener('storage',()=>{S=load();renderAll();});
 // 值班台網址在沒有同步密碼的電腦上開啟時，修改不會同步，提示改用唯讀版
 function openRO(sub){location.href=location.pathname.replace(/index\.html$/,'').replace(/\/?$/,'/')+sub;}
 function unauthShow(){const el=document.getElementById('unauthBar');if(!el)return;
-  el.hidden=TV||!S.liveUrl||!!localStorage.getItem(KEY+'.key');}
+  const has=!!localStorage.getItem(KEY+'.key');
+  el.hidden=TV||!S.liveUrl||(has&&!keyBad);
+  el.classList.toggle('bad',has&&keyBad);
+  const t=document.getElementById('ubText');if(t)t.textContent=has&&keyBad?'⚠ 同步密碼錯誤，看板的修改目前沒有同步到電視與動態表':'⚠ 本電腦未經授權。請改用唯讀版';}
+// 同步密碼錯誤偵測：中繼站回覆「密碼錯誤」→ 顯示提示列；之後有成功回覆就收起
+let keyBad=false;
+function keyResult(r){
+  if(TV||!r)return;
+  if(r.error==='密碼錯誤'&&localStorage.getItem(KEY+'.key')){if(!keyBad){keyBad=true;logEvent('同步','中繼站回覆同步密碼錯誤');unauthShow();}}
+  else if(r.ok===true&&keyBad){keyBad=false;unauthShow();}
+}
+// 提示列直接輸入同步密碼：先向中繼站驗證，正確才儲存；連續錯 5 次暫停 10 分鐘
+function ubSave(){
+  const inp=document.getElementById('ubKey'),msg=document.getElementById('ubMsg'),v=inp.value.trim();
+  if(!v){msg.textContent='請輸入同步密碼';return;}
+  if(!S.liveUrl){msg.textContent='尚未設定中繼站網址';return;}
+  const F=KEY+'.kfail';let f={};try{f=JSON.parse(localStorage.getItem(F))||{};}catch(e){}
+  if(f.until&&f.until>Date.now()){msg.textContent=`錯誤次數過多，請 ${Math.ceil((f.until-Date.now())/60000)} 分鐘後再試`;return;}
+  msg.textContent='驗證中…';
+  jsonp(S.liveUrl,{action:'logread',key:v,day:'2000-1-1'},20000).then(r=>{
+    if(r&&r.ok===true){
+      localStorage.setItem(KEY+'.key',v);localStorage.removeItem(F);inp.value='';msg.textContent='';keyBad=false;
+      logEvent('操作','於提示列重新輸入同步密碼（驗證通過）');unauthShow();
+      // 先讀取雲端最新資料，再恢復動態表與人員資格表的同步（不以本機資料覆蓋雲端）
+      Promise.resolve(livePull()).then(()=>{livePulled=true;try{dynAutoSoon();}catch(e){}qualFetch(false);});
+      setTimeout(()=>alert('✔ 同步密碼正確，已恢復同步'),50);
+    }else if(r&&r.error==='密碼錯誤'){
+      f.n=(f.n||0)+1;if(f.n>=5){f.until=Date.now()+600000;f.n=0;}localStorage.setItem(F,JSON.stringify(f));
+      msg.textContent=f.until&&f.until>Date.now()?'錯誤次數過多，請 10 分鐘後再試':`同步密碼錯誤（再錯 ${5-f.n} 次將暫停 10 分鐘）`;
+      logEvent('操作','提示列輸入同步密碼錯誤');
+    }else msg.textContent='目前無法連線到中繼站，請確認網路後再試';
+  });
+}
+// 請瀏覽器保留本網站資料（避免空間不足時自動清理而遺失同步密碼）
+if(!TV&&navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>{if(!p)navigator.storage.persist().catch(()=>{});}).catch(()=>{});
 // ===== 行動版畫面 =====
 let mobSlotOff=0;const mobOpen={};
 function mobSlot(n){mobSlotOff+=n;renderMob();}
