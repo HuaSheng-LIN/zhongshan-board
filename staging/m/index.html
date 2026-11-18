@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="f2d22c285de2">
+<meta name="build" content="9072ec3d8693">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../../icon-192.png">
@@ -1115,7 +1115,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.50';   // 版本號：每次發布時更新
+const APP_VER='v1.51';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -1779,7 +1779,10 @@ function autoTask(k,sc){
         const trio=is11&&trioRe.test(x.role);
         const needSen=trio&&hasQual&&!g.rows.filter(y=>trioRe.test(y.role)).some(y=>y.names.some(m=>m&&m!==n&&!away(m,g)&&isSenior(m)));
         const got=pick(g,ri,needSen?seniorFirst:(is11?seniorFirst:juniorFirst));
-        if(!got)return;                                   // 找不到人：保留原本人員與狀態
+        if(!got){                                         // 找不到人：保留原本人員與狀態
+          // 例外：目前時段在 91 車當班的人不會同時在別台車，位置改為空白（顯示「—」）
+          if(n&&on91.has(stripNo(n))){x.names[pi]='';changes.push({g:g.g,from:n,to:''});}
+          return;}
         if(got.loc)take(got.loc);
         put(g,ri,pi,got.n,from);
       });
@@ -1819,7 +1822,7 @@ function autoSig(){
 function autoCheck(){const s=autoSig();if(s!==lastAutoSig)renderDuty();}
 function autoLog(k,a){
   if(TV||viewOff!==0)return;
-  const t=a.changes.filter(c=>c.from!==c.to).map(c=>`${c.g} ${c.from?fmtNo(k,c.from):'（空）'}→${fmtNo(k,c.to)}`).join('、');
+  const t=a.changes.filter(c=>c.from!==c.to).map(c=>`${c.g} ${c.from?fmtNo(k,c.from):'（空）'}→${c.to?fmtNo(k,c.to):'（空，在 91 當班）'}`).join('、');
   if(t===lastAutoLog)return;
   if(lastAutoLog!==''||t)logEvent('編組',t?'自動補位：'+t:'自動補位解除，恢復原編組');
   lastAutoLog=t;
