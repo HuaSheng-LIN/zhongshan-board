@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="2d631ec7e29e">
+<meta name="build" content="a5e67f0da345">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="../../icon-192.png">
@@ -214,6 +214,8 @@ html.tv #pTab .tg.tstand::after{font-size:14px;padding:2px 10px}
 /* 即時任務編組：補位標示 */
 #task .bu,#mob .bu{display:inline-block;margin-left:4px;padding:0 .35em;border-radius:.3em;background:#f6b26b;color:#1b1b1b;font-weight:900;font-size:.78em;line-height:1.35;vertical-align:middle;letter-spacing:0}
 #task .pp.ovc{cursor:pointer}
+#task .pp.ovc.empt{display:inline-block;min-width:3em;padding:2px 10px;border:1px dashed #6b7a99;border-radius:6px;color:var(--muted)}
+#task .pp.ovc.empt:hover{color:#f6b26b;border-color:#f6b26b}
 #task .pp.ovc:hover{outline:2px dashed #f6b26b;outline-offset:1px;border-radius:6px}
 #ovList button.on{outline:3px solid #f6b26b}
 /* 火警任務編組 */
@@ -1127,7 +1129,7 @@ setInterval(keepAwake,60000);
 // 每 30 分鐘讀取網站最前面一小段，比對版本標記；有新版時，等連續 5 分鐘沒人操作、也沒有開著的視窗，才自動重新整理
 // （資料都存在這台電腦，重新整理不會遺失）
 const BUILD=(document.querySelector('meta[name="build"]')||{}).content||'';
-const APP_VER='v1.53';   // 版本號：每次發布時更新
+const APP_VER='v1.54';   // 版本號：每次發布時更新
 let updNew=false,lastInput=Date.now();
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},true));
 async function updCheck(){
@@ -1706,7 +1708,18 @@ function autoTask(k,sc){
   if(e91.length){let g91=G.find(g=>gNo(g.g)==='91');if(!g91){g91={g:'91車',rows:[]};G.push(g91);}
     g91.rows=[{role:v91.crew||'當班',names:[...e91],orig:[...e91],sheet:[...e91]}];g91.slot=true;}   // 91 不指定駕駛與救護員
   const on91=new Set(e91);
-  ov.forEach(o=>{const g=G.find(x=>x.g===o.g);if(!g)return;for(const x of g.rows){const i=x.sheet.indexOf(o.from);if(i>=0){x.names[i]=o.to||'';x.orig[i]=o.to||'';break;}}});
+  const ovPos=new Set();
+  ov.forEach(o=>{const g=G.find(x=>x.g===o.g);if(!g)return;
+    if(String(o.from).startsWith('@')){   // 空白位置：依職務找第一個空位（值班台點「—」指定）
+      const role=String(o.from).slice(1).replace(/#\d+$/,'');
+      for(let ri=0;ri<g.rows.length;ri++){const x=g.rows[ri];if(x.role!==role)continue;
+        if(!x.names.length){x.names.push('');x.orig.push('');x.sheet.push('');}
+        const i=x.names.findIndex(n=>!n);if(i<0)continue;
+        x.names[i]=o.to||'';x.orig[i]=o.to||'';x.sheet[i]=o.from;ovPos.add(g.g+'|'+ri+'|'+i);return;}
+      return;}
+    for(let ri=0;ri<g.rows.length;ri++){const x=g.rows[ri],i=x.sheet.indexOf(o.from);if(i>=0){x.names[i]=o.to||'';x.orig[i]=o.to||'';ovPos.add(g.g+'|'+ri+'|'+i);break;}}});
+  // 手動指定的人原本排在其他位置 → 從原位置移走（不重複出現；原位置照補位規則處理）
+  ov.forEach(o=>{if(!o.to)return;G.forEach(g=>{if(g.slot)return;g.rows.forEach((x,ri)=>x.names.forEach((n,i)=>{if(n===o.to&&!ovPos.has(g.g+'|'+ri+'|'+i))x.names[i]='';}));});});
   const fills={},changes=[];
   const mark=(g,n)=>{(fills[g.g]=fills[g.g]||new Set()).add(n);};
   const prio=g=>AUTO_PRIO.indexOf(gNo(g.g));
@@ -1883,7 +1896,8 @@ let ovCur=null;
 function openOv(g,from){
   if(TV)return;const k=keyOf(viewDate());ovCur={k,g,from};
   const cur=((S.taskOv||{})[k]||[]).find(o=>o.g===g&&o.from===from);
-  document.getElementById('ovTitle').textContent=`${g}｜原本：${from?fmtNo(k,from):'（空）'}`;
+  const isNew=String(from).startsWith('@')&&!/#\d+$/.test(from);
+  document.getElementById('ovTitle').textContent=String(from).startsWith('@')?`${g}｜${String(from).slice(1).replace(/#\d+$/,'')}（空位）`:`${g}｜原本：${from?fmtNo(k,from):'（空）'}`;
   const r=S.rot[k],sc=S.sched[k],a=sc?autoTask(k,sc):null;
   const asg={};if(a)a.G.forEach(gg=>gg.rows.forEach(x=>x.names.forEach(n=>{if(n)(asg[n]=asg[n]||[]).push(gg.g);})));
   const list=r?[...r.on].sort((x,y)=>x.no-y.no).map(p=>p.name):[];
@@ -1894,11 +1908,14 @@ function openOv(g,from){
   dOv.showModal();
 }
 function ovSet(to){
-  const {k,g,from}=ovCur;S.taskOv=S.taskOv||{};const L=(S.taskOv[k]=(S.taskOv[k]||[]).filter(o=>!(o.g===g&&o.from===from)));
+  let {k,g,from}=ovCur;S.taskOv=S.taskOv||{};
+  if(String(from).startsWith('@')&&!/#\d+$/.test(from)){if(to===null)return;from=from+'#'+Date.now();}   // 新的空位指定
+  const L=(S.taskOv[k]=(S.taskOv[k]||[]).filter(o=>!(o.g===g&&o.from===from)));
   if(to!==null)L.push({g,from,to});
   if(!L.length)delete S.taskOv[k];
   for(const kk of Object.keys(S.taskOv))if(kk!==k&&kk!==dutyKey(new Date()))delete S.taskOv[kk];   // 只保留今天
-  logEvent('編組',to===null?`${g} ${fmtNo(k,from)}：恢復自動編組`:`手動調整 ${g}：${fmtNo(k,from)}→${to?fmtNo(k,to):'（空）'}`);
+  const fl=String(from).startsWith('@')?String(from).slice(1).replace(/#\d+$/,'')+'空位':fmtNo(k,from);
+  logEvent('編組',to===null?`${g} ${fl}：恢復自動編組`:`手動調整 ${g}：${fl}→${to?fmtNo(k,to):'（空）'}`);
   save();dOv.close();renderDuty();
 }
 function renderTaskSheet(k,sc){
@@ -1939,7 +1956,7 @@ function renderTaskSheet(k,sc){
       const one=n=>{const cd=dutyOfName(slot,n),cls=cd==='休息'?'rest':/外出|訓練|宣導/.test(cd)?'out':'';
         return chip(k,n)+(fl.has(stripNo(n))?'<span class="bu" title="自動補位">補</span>':'')+(cd?`<span class="cd ${cls}" title="目前時段勤務">${esc(cd)}</span>`:'');};
       const ovc=n=>{if(!au||TV)return '';const o=(origOf[g.g]||{})[stripNo(n)];return o?` ovc" onclick="openOv('${esc(g.g).replace(/'/g,'')}','${esc(o).replace(/'/g,'')}')" title="點選可手動調整`:'';};
-      return `<div class="tr"${ppl.length>1?` style="flex-grow:${1+0.9*(ppl.length-1)}"`:''}><div class="r">${roleHtml(r.role)}</div><div class="p ${ppl.length?'':'empty'}${ppl.length>1?' multi':''}"${ppl.length>1?` style="--pn:${ppl.length}"`:''}>${ppl.length?ppl.map(n=>`<span class="pp${ovc(n)}">${one(n)}</span>`).join(''):'—'}</div></div>`;}).join('');
+      return `<div class="tr"${ppl.length>1?` style="flex-grow:${1+0.9*(ppl.length-1)}"`:''}><div class="r">${roleHtml(r.role)}</div><div class="p ${ppl.length?'':'empty'}${ppl.length>1?' multi':''}"${ppl.length>1?` style="--pn:${ppl.length}"`:''}>${ppl.length?ppl.map(n=>`<span class="pp${ovc(n)}">${one(n)}</span>`).join(''):(au&&!TV&&!g.slot?`<span class="pp ovc empt" onclick="openOv('${esc(g.g).replace(/'/g,'')}','@${esc(r.role).replace(/'/g,'')}')" title="點選指定人員">—</span>`:'—')}</div></div>`;}).join('');
     // 高度依人數分配：同一格有多人時給較多高度，避免被切掉
     const wt=g.rows.reduce((t,r)=>{const n=(r.names||splitPeople(r.name)).length;return t+(n>1?1+0.9*(n-1):1);},0);
     return {h:`<div class="tg${wt<=1?' tg1':''}${g0.stand?' tstand':''}" style="--gc:${gColor(g.g)};flex-grow:${wt}"><div class="gn">${gLabel(g.g)}</div><div>${rows}</div></div>`,n:wt+1,g:g.g};
